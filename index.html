@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Money Buddy</title>
+  <meta name="description" content="A simple money plan that helps you stop and think before you buy.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#ffffff">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Money Buddy">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <p class="brand"><span class="ic" aria-hidden="true">🪙</span> <span class="brand-name">Money Buddy</span></p>
+      <button id="read-btn" class="btn btn-read" type="button" hidden>
+        <span class="ic" aria-hidden="true">🔊</span><span class="read-label">Read to me</span>
+      </button>
+    </header>
+
+    <main id="screen" class="screen">
+      <noscript>
+        <h1>Money Buddy needs JavaScript.</h1>
+        <p>Please turn it on.</p>
+      </noscript>
+    </main>
+  </div>
+
+  <!-- Screen reader announcements -->
+  <div id="sr-polite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="sr-alert" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+  <script src="copy.js"></script>
+  <script src="logic.js"></script>
+  <script src="storage.js"></script>
+  <script src="speech.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
