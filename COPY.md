@@ -7,7 +7,7 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 - **Words** = words in the longest sentence. ⚠️ marks sentences over 6 words, so you can check reading level.
 - Pictures (emojis) are listed at the bottom.
 
-**4 lines** have a sentence longer than 6 words.
+**8 lines** have a sentence longer than 6 words.
 
 ## Everywhere
 
@@ -22,6 +22,11 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `typeNumber` | Type a number. | 3 |
 | `typeNumberOrZero` | Type a number. Type 0 if none. | 4 |
 | `noSaveWarning` | This phone may not save. Ask for help. | 5 |
+| `save` | Save | 1 |
+| `change` | Change | 1 |
+| `yes` | Yes | 1 |
+| `notYet` | Not yet | 2 |
+| `testDay` | Test day: {date} | 3 |
 
 ## Money sources
 
@@ -70,6 +75,9 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `bigDone` | I'm done | 2 |
 | `bigHowMuch` | How much is it? | 4 |
 | `bigWhich` | Bank or 'Cuse Cash? | 4 |
+| `bigDateTitle` | When will you buy it? | 5 |
+| `dontKnow` | I don't know | 3 |
+| `bigPickTitle` | What will you buy? | 4 |
 | `otherPickTitle` | Pick a picture. | 3 |
 | `otherNameTitle` | What is it called? | 4 |
 | `otherNameHint` | You can skip this. | 4 |
@@ -132,6 +140,82 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `gotMoney` | I got money | 3 |
 | `whatIBought` | What I bought | 3 |
 | `settings` | Settings | 1 |
+| `myCalendar` | My calendar | 2 |
+| `fixMoney` | Fix my money | 3 |
+| `fixMoneyLabel` | Fix my money: {source} | 4 |
+| `changeGoal` | Change my save goal | 4 |
+| `changeGoalLabel` | Change my save goal: {source} | 5 |
+
+## Reminders (top of Home)
+
+| Key | Text | Words |
+|---|---|---|
+| `remindToday` | Today: {thing}, {amount}. Did you pay it? | 4 |
+| `remindPast` | Did you pay for {thing}? | 5 |
+| `remindWasOn` | It was on {date}. | 4 |
+| `remindSoon` | {thing} is in {n} days. | 5 |
+| `remindTomorrow` | {thing} is tomorrow. | 3 |
+| `remindYesLabel` | Yes, I paid {name} | 4 |
+| `remindNotYetLabel` | Not yet, {name} | 3 |
+| `notYetDone` | Okay. We will ask tomorrow. | 4 |
+
+## Calendar
+
+| Key | Text | Words |
+|---|---|---|
+| `calTitle` | My calendar | 2 |
+| `calMonth` | Month | 1 |
+| `calList` | List | 1 |
+| `calViewLabel` | Show as | 2 |
+| `calWeekdays` | Sun Mon Tue Wed Thu Fri Sat | 7 ⚠️ |
+| `calToday` | Today | 1 |
+| `calNothing` | Nothing planned | 2 |
+| `calPast` | Past day | 2 |
+| `calNoDay` | No day yet | 3 |
+| `calListEmpty` | No days picked yet. | 4 |
+| `dayNothing` | Nothing on this day. | 4 |
+| `dayAdd` | Add a big spend on this day | 7 ⚠️ |
+
+## Change a big thing
+
+| Key | Text | Words |
+|---|---|---|
+| `bigEditTitle` | Change this big thing | 4 |
+| `changeAmount` | Change amount | 2 |
+| `changeDay` | Change day | 2 |
+| `notPaidYet` | Not paid yet | 3 |
+| `bigRemoveTitle` | Remove {thing}, {amount}? | 3 |
+| `removeBigUp` | Your money will go back up. | 6 |
+| `removeBigFree` | Your free money will go up. | 6 |
+
+## Fix my money
+
+| Key | Text | Words |
+|---|---|---|
+| `fixBankTitle` | How much money is really in your bank? | 8 ⚠️ |
+| `fixCuseTitle` | How much 'Cuse Cash do you really have? | 8 ⚠️ |
+| `fixAppSays` | The app says {amount}. | 4 |
+| `fixSame` | Okay. Nothing changed. | 2 |
+| `fixedTitle` | All fixed! | 2 |
+| `goalDoneTitle` | Saved! | 1 |
+| `goalDoneText` | You will save {amount}. | 4 |
+
+## Undo
+
+| Key | Text | Words |
+|---|---|---|
+| `undoButton` | Oops! Undo | 1 |
+| `undoReady` | Made a mistake? Tap Undo. | 3 |
+| `undoDone` | Okay. We undid it. | 3 |
+| `undoBought` | You bought {thing}, {amount}. | 4 |
+| `undoGot` | You got {amount}. | 3 |
+| `undoPaid` | You paid {thing}. | 3 |
+| `undoFixed` | You fixed your {source}. | 4 |
+| `undoGoal` | You changed your save goal. | 5 |
+| `undoRemoved` | You removed {thing}. | 3 |
+| `undoChanged` | You changed {thing}. | 3 |
+| `undoAdded` | You added {thing}. | 3 |
+| `undoNotPaid` | {thing} is not paid. | 4 |
 
 ## I paid it
 
@@ -172,6 +256,7 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `stopText` | This money is for your plans. | 6 |
 | `loseHeading` | You will not have enough for: | 6 |
 | `loseSave` | Your savings | 2 |
+| `loseOnDay` | {name} on {date} | 3 |
 | `notEnoughTitle` | Not enough money | 3 |
 | `notEnoughText` | You only have {amount}. | 4 |
 | `itemLine` | {thing}, {amount}, {source} | 3 |
@@ -216,9 +301,18 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `waitedNone` | Here is what you bought. | 5 |
 | `listEmpty` | Nothing yet. | 2 |
 | `youWaited` | You waited! | 2 |
+| `gotEntry` | You got money | 3 |
+| `fixedBank` | You fixed your bank money | 5 |
+| `fixedCuse` | You fixed your 'Cuse Cash | 5 |
+| `plusWord` | plus | 1 |
 | `removeLabel` | Remove {thing}, {amount}, {date} | 4 |
-| `removeTitle` | Take this off the list? | 5 |
-| `yesRemove` | Yes, take it off | 4 |
+| `removeTitle` | Remove {amount} {thing}? | 3 |
+| `removeGotTitle` | Remove {amount} you got? | 4 |
+| `removeFixTitle` | Remove this fix of {amount}? | 5 |
+| `removeUp` | Your money will go back up. | 6 |
+| `removeDown` | Your money will go down. | 5 |
+| `removeNone` | It will come off the list. | 6 |
+| `yesRemove` | Yes, remove | 2 |
 | `noKeep` | No, keep it | 3 |
 | `removedText` | It is off the list. | 5 |
 
@@ -286,6 +380,10 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `dotGreen` | 🟢 |
 | `dotYellow` | 🟡 |
 | `dotRed` | 🔴 |
+| `undo` | ↩️ |
+| `test` | 🧪 |
+| `bell` | 🔔 |
+| `later` | ⏳ |
 | `concert` | 🎟️ |
 | `laundry` | 🧺 |
 | `gift` | 🎂 |

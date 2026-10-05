@@ -13,7 +13,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var SCHEMA_VERSION = 1;
+  var SCHEMA_VERSION = 2;
   var SOURCES = ['bank', 'cuse'];
   var MAX_AMOUNT = 9999.99;
   var HISTORY_LIMIT = 24;
@@ -43,6 +43,11 @@
 
   function isSource(s) {
     return SOURCES.indexOf(s) !== -1;
+  }
+
+  function indexById(list, id) {
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return i;
+    return -1;
   }
 
   // ---------- calendar ----------
@@ -78,10 +83,51 @@
     return daysInMonth(date.getFullYear(), date.getMonth() + 1) - date.getDate() + 1;
   }
 
+  // ---------- day keys ("YYYY-MM-DD", the phone's local day) ----------
+  // A day key must never go through new Date("YYYY-MM-DD"): that reads it as
+  // UTC midnight, which is the evening before in Syracuse.
+
+  /** "YYYY-MM-DD" in the phone's local time. */
+  function dayKey(date) {
+    return monthKey(date) + '-' + pad2(date.getDate());
+  }
+
+  /** Local noon on that day (noon so daylight saving can never move it). */
+  function parseDayKey(key) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
+  }
+
+  function isDayKey(x) {
+    if (typeof x !== 'string') return false;
+    var d = parseDayKey(x);
+    return !!d && dayKey(d) === x;
+  }
+
+  /** Whole days from one day key to another (tomorrow = 1). */
+  function daysBetween(fromKey, toKey) {
+    return Math.round((parseDayKey(toKey) - parseDayKey(fromKey)) / 86400000);
+  }
+
+  /** The days of a "YYYY-MM" month. lead = blank cells before day 1 (Sunday first). */
+  function monthGrid(month) {
+    var y = Number(month.slice(0, 4));
+    var m = Number(month.slice(5, 7));
+    var days = [];
+    for (var d = 1; d <= daysInMonth(y, m); d++) days.push({ day: d, key: month + '-' + pad2(d) });
+    return { year: y, month: m, lead: new Date(y, m - 1, 1).getDay(), days: days };
+  }
+
   // ---------- money per source ----------
 
   function sourceOf(state, source) {
-    return (state.sources && state.sources[source]) || { start: 0, added: [], saveGoal: 0 };
+    return (state.sources && state.sources[source]) || { start: 0, added: [], adjustments: [], saveGoal: 0 };
+  }
+
+  /** Start money plus money added plus fixes. */
+  function haveCents(s) {
+    return toCents(s.start) + sumCents(s.added || []) + sumCents(s.adjustments || []);
   }
 
   function boughtFrom(state, source) {
@@ -98,7 +144,7 @@
 
   function currentCents(state, source) {
     var s = sourceOf(state, source);
-    return toCents(s.start) + sumCents(s.added || []) -
+    return haveCents(s) -
       sumCents(boughtFrom(state, source)) -
       sumCents(bigSpendsFor(state, source, true));
   }
@@ -122,7 +168,7 @@
   function sourceSummary(state, source) {
     var s = sourceOf(state, source);
     var allBig = (state.bigSpends || []).filter(function (b) { return b.source === source; });
-    var plannedFree = toCents(s.start) + sumCents(s.added || []) - toCents(s.saveGoal) - sumCents(allBig);
+    var plannedFree = haveCents(s) - toCents(s.saveGoal) - sumCents(allBig);
     return {
       current: currentMoney(state, source),
       protected: protectedMoney(state, source),
@@ -169,7 +215,7 @@
       var c = toCents(b.amount);
       if (c <= 0) return;
       var take = Math.min(short, c);
-      out.push({ kind: 'bigSpend', id: b.id, name: b.name, icon: b.icon, amount: fromCents(c), short: fromCents(take) });
+      out.push({ kind: 'bigSpend', id: b.id, name: b.name, icon: b.icon, date: b.date || null, amount: fromCents(c), short: fromCents(take) });
       short -= take;
     });
     var goal = toCents(sourceOf(state, source).saveGoal);
@@ -219,7 +265,7 @@
   function planShortfalls(state) {
     return SOURCES.map(function (source) {
       var s = sourceOf(state, source);
-      var have = toCents(s.start) + sumCents(s.added || []);
+      var have = haveCents(s);
       var need = toCents(s.saveGoal) + sumCents((state.bigSpends || []).filter(function (b) { return b.source === source; }));
       return { source: source, need: fromCents(need), have: fromCents(have), short: fromCents(need - have) };
     }).filter(function (r) { return r.short > 0; });
@@ -234,20 +280,42 @@
       month: month,
       setupComplete: false,
       sources: {
-        bank: { start: 0, added: [], saveGoal: 0 },
-        cuse: { start: 0, added: [], saveGoal: 0 }
+        bank: { start: 0, added: [], adjustments: [], saveGoal: 0 },
+        cuse: { start: 0, added: [], adjustments: [], saveGoal: 0 }
       },
       bigSpends: [],
       purchases: [],
       suggestions: opts.suggestions || [],
       history: opts.history || [],
-      settings: Object.assign({ autoRead: true }, opts.settings || {})
+      settings: Object.assign({ autoRead: true, calendarView: null }, opts.settings || {})
     };
   }
 
-  function addMoney(state, source, amount, dateISO) {
+  function addMoney(state, source, amount, dateISO, id) {
     var next = clone(state);
-    next.sources[source].added.push({ amount: fromCents(toCents(amount)), date: dateISO });
+    next.sources[source].added.push({ id: id || makeId(), amount: fromCents(toCents(amount)), date: dateISO });
+    return next;
+  }
+
+  /** How far the app's number is from the real one (+ means the app is too low). */
+  function adjustmentNeeded(state, source, realAmount) {
+    return fromCents(toCents(realAmount) - currentCents(state, source));
+  }
+
+  /**
+   * "Fix my money": saves only the difference, so past entries stay as they were.
+   * Nothing is saved when the number is already right.
+   */
+  function addAdjustment(state, source, realAmount, dateISO, id) {
+    var next = clone(state);
+    var diff = toCents(realAmount) - currentCents(state, source);
+    if (diff !== 0) next.sources[source].adjustments.push({ id: id || makeId(), amount: fromCents(diff), date: dateISO });
+    return next;
+  }
+
+  function setSaveGoal(state, source, amount) {
+    var next = clone(state);
+    next.sources[source].saveGoal = fromCents(toCents(amount));
     return next;
   }
 
@@ -259,8 +327,21 @@
       icon: item.icon,
       amount: fromCents(toCents(item.amount)),
       source: item.source,
+      date: isDayKey(item.date) ? item.date : null,
       paid: false,
-      paidDate: null
+      paidDate: null,
+      notYetOn: null
+    });
+    return next;
+  }
+
+  /** changes may hold amount and/or date (date null = "I don't know"). */
+  function updateBigSpend(state, id, changes) {
+    var next = clone(state);
+    next.bigSpends.forEach(function (b) {
+      if (b.id !== id) return;
+      if ('amount' in changes) b.amount = fromCents(toCents(changes.amount));
+      if ('date' in changes) { b.date = isDayKey(changes.date) ? changes.date : null; b.notYetOn = null; }
     });
     return next;
   }
@@ -275,6 +356,24 @@
     var next = clone(state);
     next.bigSpends.forEach(function (b) {
       if (b.id === id) { b.paid = true; b.paidDate = dateISO; }
+    });
+    return next;
+  }
+
+  /** "Not paid yet": for a big spend marked paid by mistake. */
+  function unmarkBigSpendPaid(state, id) {
+    var next = clone(state);
+    next.bigSpends.forEach(function (b) {
+      if (b.id === id) { b.paid = false; b.paidDate = null; }
+    });
+    return next;
+  }
+
+  /** "Not yet" on a reminder: don't ask again until tomorrow. */
+  function setNotYet(state, id, todayKey) {
+    var next = clone(state);
+    next.bigSpends.forEach(function (b) {
+      if (b.id === id) b.notYetOn = todayKey;
     });
     return next;
   }
@@ -297,6 +396,132 @@
     var next = clone(state);
     next.purchases = next.purchases.filter(function (p) { return p.id !== id; });
     return next;
+  }
+
+  function removeAdded(state, source, id) {
+    var next = clone(state);
+    next.sources[source].added = next.sources[source].added.filter(function (a) { return a.id !== id; });
+    return next;
+  }
+
+  function removeAdjustment(state, source, id) {
+    var next = clone(state);
+    next.sources[source].adjustments = next.sources[source].adjustments.filter(function (a) { return a.id !== id; });
+    return next;
+  }
+
+  // ---------- "What I bought": purchases, money in, and fixes ----------
+
+  /** Everything in one list, newest first. kind is 'purchase', 'added' or 'adjustment'. */
+  function activityList(state) {
+    var out = (state.purchases || []).map(function (p) { return Object.assign({ kind: 'purchase' }, p); });
+    SOURCES.forEach(function (src) {
+      var s = sourceOf(state, src);
+      (s.added || []).forEach(function (a) { out.push({ kind: 'added', id: a.id, amount: a.amount, source: src, date: a.date }); });
+      (s.adjustments || []).forEach(function (a) { out.push({ kind: 'adjustment', id: a.id, amount: a.amount, source: src, date: a.date }); });
+    });
+    return out.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
+      if (a.x.date !== b.x.date) return a.x.date < b.x.date ? 1 : -1;
+      return b.i - a.i;
+    }).map(function (o) { return o.x; });
+  }
+
+  /** What removing an entry does to "You have": 'up', 'down' or 'none'. */
+  function removalEffect(entry) {
+    if (entry.kind === 'purchase') return entry.choice === 'bought' ? 'up' : 'none';
+    if (entry.kind === 'added') return 'down';
+    var c = toCents(entry.amount);
+    return c > 0 ? 'down' : c < 0 ? 'up' : 'none';
+  }
+
+  function entryList(state, entry) {
+    if (entry.kind === 'purchase') return state.purchases;
+    return state.sources[entry.source][entry.kind === 'added' ? 'added' : 'adjustments'];
+  }
+
+  function removeEntry(state, entry) {
+    if (entry.kind === 'purchase') return removePurchase(state, entry.id);
+    if (entry.kind === 'added') return removeAdded(state, entry.source, entry.id);
+    return removeAdjustment(state, entry.source, entry.id);
+  }
+
+  // ---------- undo ----------
+  // Each undo note says how to reverse exactly one change, and touches only
+  // that one entry, so it can never wipe out anything else.
+  //   { type: 'purchase', id }                  – take back a purchase
+  //   { type: 'added', source, id }             – take back "I got money"
+  //   { type: 'adjustment', source, id }        – take back "Fix my money"
+  //   { type: 'saveGoal', source, before }      – put the old save goal back
+  //   { type: 'bigSpend', id, before, index }   – put a big spend back the way it was
+  //   { type: 'restore', kind, source, record, index } – put a removed entry back
+
+  /** Call BEFORE changing, adding (new id) or removing a big spend. */
+  function bigSpendUndo(state, id) {
+    var i = indexById(state.bigSpends, id);
+    return { type: 'bigSpend', id: id, before: i === -1 ? null : clone(state.bigSpends[i]), index: i };
+  }
+
+  /** Call BEFORE removing an entry from "What I bought". */
+  function removeUndo(state, entry) {
+    var list = entryList(state, entry);
+    var i = indexById(list, entry.id);
+    return { type: 'restore', kind: entry.kind, source: entry.source, record: i === -1 ? null : clone(list[i]), index: i };
+  }
+
+  function saveGoalUndo(state, source) {
+    return { type: 'saveGoal', source: source, before: sourceOf(state, source).saveGoal };
+  }
+
+  function putBack(list, record, index) {
+    if (indexById(list, record.id) !== -1) return;
+    list.splice(Math.max(0, Math.min(index, list.length)), 0, record);
+  }
+
+  function undo(state, u) {
+    if (!u) return state;
+    if (u.type === 'purchase') return removePurchase(state, u.id);
+    if (u.type === 'added') return removeAdded(state, u.source, u.id);
+    if (u.type === 'adjustment') return removeAdjustment(state, u.source, u.id);
+    if (u.type === 'saveGoal') return setSaveGoal(state, u.source, u.before);
+    var next = clone(state);
+    if (u.type === 'bigSpend') {
+      var i = indexById(next.bigSpends, u.id);
+      if (!u.before) { if (i !== -1) next.bigSpends.splice(i, 1); }
+      else if (i !== -1) next.bigSpends[i] = clone(u.before);
+      else putBack(next.bigSpends, clone(u.before), u.index);
+    } else if (u.type === 'restore' && u.record) {
+      putBack(entryList(next, u), clone(u.record), u.index);
+    }
+    return next;
+  }
+
+  // ---------- dated big spends ----------
+
+  function bigSpendsOn(state, key) {
+    return (state.bigSpends || []).filter(function (b) { return b.date === key; });
+  }
+
+  function byDate(a, b) {
+    return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+  }
+
+  /**
+   * Home screen reminders for unpaid big spends with a day.
+   *   dueToday – the day is today
+   *   overdue  – the day has passed (the money stays protected)
+   *   soon     – 1 to 3 days away: [{ item, days }]
+   * "Not yet" hides dueToday and overdue ones until tomorrow.
+   */
+  function reminders(state, todayKey) {
+    var r = { dueToday: [], overdue: [], soon: [] };
+    (state.bigSpends || []).filter(function (b) { return !b.paid && isDayKey(b.date); }).sort(byDate).forEach(function (b) {
+      var asked = b.notYetOn === todayKey;
+      var days = daysBetween(todayKey, b.date);
+      if (days === 0) { if (!asked) r.dueToday.push(b); }
+      else if (days < 0) { if (!asked) r.overdue.push(b); }
+      else if (days <= 3) r.soon.push({ item: b, days: days });
+    });
+    return r;
   }
 
   /** Money left at the end of the month counts as "saved". */
@@ -354,13 +579,67 @@
     return fromCents(toCents(Math.min(n, MAX_AMOUNT * 100)));
   }
 
+  /** Like money(), but a fix can be negative. */
+  function signedMoney(x) {
+    var n = Number(x);
+    if (!Number.isFinite(n)) return 0;
+    return n < 0 ? -money(-n) : money(n);
+  }
+
   function str(x, fallback) {
     return typeof x === 'string' ? x.slice(0, 60) : fallback;
+  }
+
+  function dayOrNull(x) {
+    return isDayKey(x) ? x : null;
+  }
+
+  // ---------- upgrading old saved data ----------
+
+  /** v1 → v2 for one month of data (the live month or an archived one). Changes m in place. */
+  function upgradeMonthV1(m) {
+    if (m.sources && typeof m.sources === 'object') {
+      SOURCES.forEach(function (src) {
+        var s = m.sources[src];
+        if (!s || typeof s !== 'object') return;
+        if (Array.isArray(s.added)) {
+          s.added = s.added.map(function (a) {
+            return a && typeof a === 'object' && typeof a.id !== 'string' ? Object.assign({ id: makeId() }, a) : a;
+          });
+        }
+        if (!Array.isArray(s.adjustments)) s.adjustments = [];
+      });
+    }
+    if (Array.isArray(m.bigSpends)) {
+      m.bigSpends.forEach(function (b) {
+        if (!b || typeof b !== 'object') return;
+        if (!('date' in b)) b.date = null;
+        if (!('notYetOn' in b)) b.notYetOn = null;
+      });
+    }
+  }
+
+  /**
+   * Brings saved data from an older version of the app up to this one.
+   * Never drops anything: version 1 data only gains new, empty fields
+   * (ids for "I got money", empty fixes, no day on big spends).
+   * Data that is already current, or unknown, is returned as it is.
+   */
+  function migrate(raw) {
+    if (!raw || typeof raw !== 'object' || raw.version !== 1) return raw;
+    var next = clone(raw);
+    upgradeMonthV1(next);
+    if (Array.isArray(next.history)) {
+      next.history.forEach(function (h) { if (h && typeof h === 'object') upgradeMonthV1(h); });
+    }
+    next.version = 2;
+    return next;
   }
 
   /**
    * Returns a clean copy of saved data, or null if it is unusable.
    * Bad single entries are dropped instead of failing the whole file.
+   * Run migrate() first for data from an older version.
    */
   function sanitizeState(raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -368,8 +647,10 @@
     if (typeof raw.month !== 'string' || !/^\d{4}-\d{2}$/.test(raw.month)) return null;
 
     var s = createState(raw.month, {
-      settings: raw.settings && typeof raw.settings === 'object'
-        ? { autoRead: raw.settings.autoRead !== false } : undefined
+      settings: raw.settings && typeof raw.settings === 'object' ? {
+        autoRead: raw.settings.autoRead !== false,
+        calendarView: raw.settings.calendarView === 'grid' || raw.settings.calendarView === 'list' ? raw.settings.calendarView : null
+      } : undefined
     });
     s.setupComplete = raw.setupComplete === true;
 
@@ -380,7 +661,10 @@
       s.sources[src].saveGoal = money(r.saveGoal);
       s.sources[src].added = Array.isArray(r.added) ? r.added.filter(function (a) {
         return a && Number(a.amount) > 0;
-      }).map(function (a) { return { amount: money(a.amount), date: str(a.date, '') }; }) : [];
+      }).map(function (a) { return { id: str(a.id, makeId()), amount: money(a.amount), date: str(a.date, '') }; }) : [];
+      s.sources[src].adjustments = Array.isArray(r.adjustments) ? r.adjustments.filter(function (a) {
+        return a && signedMoney(a.amount) !== 0;
+      }).map(function (a) { return { id: str(a.id, makeId()), amount: signedMoney(a.amount), date: str(a.date, '') }; }) : [];
     });
 
     var cleanBig = function (b) {
@@ -390,8 +674,10 @@
         icon: str(b.icon, '⭐'),
         amount: money(b.amount),
         source: b.source,
+        date: dayOrNull(b.date),
         paid: b.paid === true,
-        paidDate: b.paid === true ? str(b.paidDate, null) : null
+        paidDate: b.paid === true ? str(b.paidDate, null) : null,
+        notYetOn: dayOrNull(b.notYetOn)
       };
     };
     var okBig = function (b) { return b && typeof b === 'object' && isSource(b.source) && Number(b.amount) > 0; };
@@ -495,18 +781,42 @@
   var MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
     'September', 'October', 'November', 'December'];
 
-  /** "Mon, Oct 5" in local time. */
-  function formatShortDate(iso) {
-    var d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
+  /** A Date from a full ISO time or a "YYYY-MM-DD" day key (read as a local day). */
+  function toDate(x) {
+    var d = isDayKey(x) ? parseDayKey(x) : new Date(x);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /** "Mon, Oct 5" in local time. Takes an ISO time or a day key. */
+  function formatShortDate(x) {
+    var d = toDate(x);
+    if (!d) return '';
     return DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
   }
 
   /** "Monday, October 5" – for screen readers. */
-  function formatLongDate(iso) {
-    var d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
+  function formatLongDate(x) {
+    var d = toDate(x);
+    if (!d) return '';
     return DAYS_LONG[d.getDay()] + ', ' + MONTHS_LONG[d.getMonth()] + ' ' + d.getDate();
+  }
+
+  /** "Oct 12" */
+  function formatMonthDay(x) {
+    var d = toDate(x);
+    return d ? MONTHS[d.getMonth()] + ' ' + d.getDate() : '';
+  }
+
+  /** "October 12" */
+  function formatMonthDayLong(x) {
+    var d = toDate(x);
+    return d ? MONTHS_LONG[d.getMonth()] + ' ' + d.getDate() : '';
+  }
+
+  /** "October 2026" from "2026-10" */
+  function formatMonthYear(month) {
+    var d = parseDayKey(month + '-01');
+    return d ? MONTHS_LONG[d.getMonth()] + ' ' + d.getFullYear() : '';
   }
 
   return {
@@ -518,6 +828,12 @@
     monthKey: monthKey,
     daysInMonth: daysInMonth,
     daysLeftInMonth: daysLeftInMonth,
+    dayKey: dayKey,
+    parseDayKey: parseDayKey,
+    isDayKey: isDayKey,
+    daysBetween: daysBetween,
+    monthGrid: monthGrid,
+    makeId: makeId,
     currentMoney: currentMoney,
     protectedMoney: protectedMoney,
     freeMoney: freeMoney,
@@ -529,13 +845,31 @@
     planShortfalls: planShortfalls,
     createState: createState,
     addMoney: addMoney,
+    adjustmentNeeded: adjustmentNeeded,
+    addAdjustment: addAdjustment,
+    setSaveGoal: setSaveGoal,
     addBigSpend: addBigSpend,
+    updateBigSpend: updateBigSpend,
     removeBigSpend: removeBigSpend,
     markBigSpendPaid: markBigSpendPaid,
+    unmarkBigSpendPaid: unmarkBigSpendPaid,
+    setNotYet: setNotYet,
     recordPurchase: recordPurchase,
     removePurchase: removePurchase,
+    removeAdded: removeAdded,
+    removeAdjustment: removeAdjustment,
+    activityList: activityList,
+    removalEffect: removalEffect,
+    removeEntry: removeEntry,
+    bigSpendUndo: bigSpendUndo,
+    removeUndo: removeUndo,
+    saveGoalUndo: saveGoalUndo,
+    undo: undo,
+    bigSpendsOn: bigSpendsOn,
+    reminders: reminders,
     monthRecap: monthRecap,
     startMonth: startMonth,
+    migrate: migrate,
     sanitizeState: sanitizeState,
     pressKey: pressKey,
     keypadValue: keypadValue,
@@ -543,6 +877,9 @@
     formatMoney: formatMoney,
     moneyWords: moneyWords,
     formatShortDate: formatShortDate,
-    formatLongDate: formatLongDate
+    formatLongDate: formatLongDate,
+    formatMonthDay: formatMonthDay,
+    formatMonthDayLong: formatMonthDayLong,
+    formatMonthYear: formatMonthYear
   };
 });

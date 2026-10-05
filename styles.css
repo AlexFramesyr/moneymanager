@@ -279,8 +279,8 @@ button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
 
 .item { display: flex; gap: 14px; align-items: flex-start; }
 .item-ic { font-size: 2.5rem; }
-.item-main { flex: 1; min-width: 0; }
-.item-name { margin: 0 0 2px; font-size: 1.5rem; font-weight: 600; }
+.item-main { display: block; flex: 1; min-width: 0; }
+.item-name { display: block; margin: 0 0 2px; font-size: 1.5rem; font-weight: 600; }
 .item-meta { margin: 0; color: var(--text-soft); display: flex; gap: 0.35em; align-items: center; }
 .item-card .btn { margin-top: 12px; }
 .item-card-big { margin: 16px 0; }
@@ -288,6 +288,175 @@ button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
 .item-card.is-paid .item-name { text-decoration: line-through; color: var(--text-soft); }
 .paid-tag, .waited-tag { display: flex; gap: 0.4em; align-items: center; margin: 10px 0 0; font-weight: 700; color: var(--green-ink); }
 .buy-card.is-waited { border-color: #c9a400; background: #fffbea; }
+.buy-card.is-added { border-color: #86c79b; background: var(--green-bg); }
+.buy-card.is-adjustment { border-style: dashed; }
+
+/* The tappable top part of a big spend card ("Change this big thing") */
+.item-btn {
+  display: block;
+  min-height: var(--tap);
+  margin: -8px;
+  padding: 8px;
+  width: calc(100% + 16px);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.item-btn:active { background: rgba(0, 0, 0, 0.05); }
+.edit-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-top: 10px;
+  padding: 0.2em 0.8em;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 700;
+}
+.big-card .item-btn + .btn, .big-card .item-btn + .paid-tag { margin-top: 18px; }
+.item-card.is-paid .edit-hint { text-decoration: none; }
+
+/* Fix my money / Change my save goal, on each source card */
+.src-actions { display: grid; gap: 10px; margin-top: 14px; }
+.src-actions .btn { font-size: 1.375rem; }
+
+/* ---------- reminders on Home ---------- */
+
+.remind {
+  margin: 0 0 14px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--yellow-bg);
+  border: 4px solid var(--yellow-edge);
+}
+.remind-today { border-width: 6px; }
+.remind-text { display: flex; gap: 0.4em; align-items: flex-start; flex-wrap: wrap; margin: 0 0 8px; font-size: 1.5rem; font-weight: 700; }
+.remind-ic { font-size: 1.3em; }
+.remind-sub { display: flex; gap: 0.4em; align-items: center; margin: 0 0 8px; color: var(--text-soft); font-weight: 600; }
+.remind-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.soon-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.soon-list li {
+  display: flex;
+  gap: 0.45em;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bank-bg);
+  border: 2px solid var(--bank);
+  font-weight: 600;
+}
+
+/* ---------- calendar ---------- */
+
+.btn-calendar { min-height: 5rem; }
+.cal-month { margin: 0.6em 0 0.4em; }
+/* Side by side when they fit; stacked on narrow phones or with big text. */
+.cal-toggle { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 10px; margin: 0 0 14px; }
+.btn-toggle { padding-left: 0.5em; padding-right: 0.5em; }
+.btn-toggle[aria-pressed="true"] { background: var(--go); color: #fff; border-color: var(--go-dark); }
+
+/* The grid may use some of the side gutter, so day cells can be bigger. */
+.cal { margin: 0 -12px; }
+.cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.cal-head span { text-align: center; font-size: 0.875rem; font-weight: 700; color: var(--text-soft); padding-bottom: 4px; }
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  min-width: 0;
+  min-height: 4.25rem;
+  padding: 4px 0;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  line-height: 1.1;
+  cursor: pointer;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+.cal-day:active { background: var(--surface); }
+.cal-num { font-size: 1.25rem; font-weight: 700; }
+.cal-icons { font-size: 1.125rem; white-space: nowrap; }
+.cal-today { font-size: 0.75rem; font-weight: 800; }
+.cal-day.has-items { border-color: var(--bank); background: var(--bank-bg); }
+.cal-day.is-today { border: 4px solid var(--text); }
+.cal-day.is-past:not(.has-items) { background: var(--surface); }
+/* Past days when picking a day: faded and not tappable (text still readable) */
+.cal-day.is-off { background: var(--surface); border-style: dashed; color: var(--text-soft); cursor: not-allowed; }
+.cal-day.is-off .cal-num { font-weight: 400; }
+
+.day-pick .btn-day { justify-content: flex-start; }
+.btn-day.is-today { border-width: 5px; border-color: var(--text); }
+.today-tag {
+  margin-left: auto;
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.day-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 1.5rem;
+  cursor: pointer;
+  border-color: var(--bank);
+  background: var(--bank-bg);
+}
+.day-card.is-today { border: 5px solid var(--text); }
+.day-card-date { display: flex; gap: 0.4em; align-items: center; font-weight: 800; margin-bottom: 6px; }
+.day-card-item { display: flex; gap: 0.45em; align-items: center; font-weight: 600; }
+
+/* ---------- "Oops! Undo" bar ---------- */
+
+.undo-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: #fff;
+  border-top: 4px solid var(--text);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.15);
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+}
+.undo-inner { max-width: 448px; margin: 0 auto; }
+.undo-what { margin: 0 0 8px; font-weight: 600; }
+.btn-undo { background: var(--text); color: #fff; min-height: 4.5rem; font-size: 1.875rem; }
+.btn-undo:active { background: #000; }
+.undo-timer { display: block; height: 8px; margin-top: 8px; border-radius: 4px; background: var(--surface); overflow: hidden; }
+.undo-timer span { display: block; height: 100%; width: 100%; background: var(--text-soft); }
+.undo-bar.is-ticking .undo-timer span { animation: undo-shrink 10s linear forwards; }
+.undo-bar.is-paused .undo-timer span { animation-play-state: paused; }
+@keyframes undo-shrink { from { width: 100%; } to { width: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .undo-timer { display: none; }
+}
+body.has-undo .app { padding-bottom: calc(14rem + env(safe-area-inset-bottom)); }
+
+/* Testing only (?today=… on localhost) */
+.topbar.has-test { flex-wrap: wrap; }
+.test-day {
+  flex-basis: 100%;
+  display: flex;
+  gap: 0.4em;
+  align-items: center;
+  margin: 8px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fdeef3;
+  border: 2px solid #e5a3b8;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
 
 /* Money source cards */
 .src-cards { display: grid; gap: 14px; }
@@ -484,6 +653,10 @@ button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
 
 /* Windows high contrast mode */
 @media (forced-colors: active) {
-  .btn, .key, .tile, .choice, .card, .alert-card, .switch { border: 3px solid ButtonText; }
+  .btn, .key, .tile, .choice, .card, .alert-card, .switch, .cal-day, .remind { border: 3px solid ButtonText; }
+  .cal-day.is-today, .day-card.is-today { border-width: 6px; }
+  .cal-day.is-off { border-style: dashed; color: GrayText; }
+  .item-btn { border: 2px solid ButtonText; }
+  .undo-bar { border-top: 4px solid CanvasText; }
   .dot { forced-color-adjust: none; }
 }

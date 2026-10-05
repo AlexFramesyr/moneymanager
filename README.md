@@ -23,6 +23,17 @@ It helps a student **stop and think before they buy something**, so they still h
 
 The warnings get stricter as the month goes on, because there is less time left to make the money last.
 
+### Calendar and reminders 📅
+- When the student adds a big thing, they can pick **the day they will buy it** (or tap **I don't know**).
+- **📅 My calendar** on the Home screen shows the month. Days with a big thing show its picture (✅ once paid). Tap a day to see it, mark it paid, or add a big thing on that day. On small phones, the calendar shows as a **List** of days instead.
+- On the day of a big thing, Home asks **"Today: 🎟️ Concert, $60. Did you pay it?"** It also says when one is coming up in the next 3 days, and asks again if a day passes without it being paid. Until it is paid, that money stays saved for it.
+
+### Fixing mistakes ✏️
+- **↩️ Oops! Undo:** after buying something, "I got money", "I paid it", or fixing money, a big Undo bar shows at the bottom. It stays while the student is on that screen, and for 10 seconds after they move on.
+- **✏️ Fix my money** (on each money card): type how much is *really* in the bank or on the 'Cuse Cash card. The app saves the difference, so the list still shows what happened. **🐷 Change my save goal** is right next to it.
+- **❌ Remove** on every line in **What I bought** (it asks first).
+- **Tap a big thing** on Home to change its amount or day, remove it, or say **Not paid yet** if it was marked paid by mistake.
+
 ---
 
 ## Put it on the internet for free (GitHub Pages)
@@ -118,9 +129,9 @@ Phones keep a saved copy of the app so it works offline. To make phones get your
 1. Open **`sw.js`** on GitHub and click ✏️.
 2. Find this line near the top:
    ```js
-   var CACHE = 'money-buddy-v1';
+   var CACHE = 'money-buddy-v2';
    ```
-   Change the number: `v1` → `v2` (next time, `v3`, and so on).
+   Change the number: `v2` → `v3` (next time, `v4`, and so on).
 3. Click **Commit changes**.
 
 Students will get the new version the **second** time they open the app (the first open downloads it quietly).
@@ -130,11 +141,13 @@ Students will get the new version the **second** time they open the app (the fir
 ## For developers
 
 - Plain HTML, CSS, and JavaScript. No build step and no dependencies.
-- `logic.js` holds all the budgeting math as pure functions. `app.js` holds the screens. `copy.js` holds the words. `storage.js` handles saving (`localStorage` key `moneyBuddy.v1`). `speech.js` handles reading out loud. `sw.js` handles offline use.
-- **Tests:** `npm test` (or `node --test tests/logic.test.js`). Uses Node's built-in test runner, Node 18 or newer.
+- `logic.js` holds all the budgeting math as pure functions. `app.js` holds the screens. `copy.js` holds the words. `storage.js` handles saving (`localStorage` key `moneyBuddy.v2`). `speech.js` handles reading out loud. `sw.js` handles offline use.
+- **Saved data versions:** the data has a `version` number (now **2**). When a phone that used version 1 opens the new app, `storage.js` reads the old `moneyBuddy.v1` data, upgrades it with `MBLogic.migrate()` (adds empty `adjustments`, ids for "I got money", and no day on big spends), and saves it as `moneyBuddy.v2`. **The `moneyBuddy.v1` data is never changed or deleted**, so it stays as a backup, and an old cached copy of the app can never write over new data. If you change the data shape again, add a version 2 → 3 step to `migrate()` and a test for it.
+- **Tests:** `npm test` (or `node --test tests/logic.test.js tests/storage.test.js`). Uses Node's built-in test runner, Node 18 or newer.
+- **Pretend it is another day (testing only):** open `http://localhost:8000/?today=2026-10-25`. This works only on `localhost` / `127.0.0.1`, never on the real site, and a 🧪 tag shows at the top. It changes the calendar, reminders and weekly alert limits. **Careful:** a day in a *different month* starts a new month and archives the current one on that browser, just like a real new month.
 - **Run locally:** `python -m http.server 8000` in this folder, then open `http://localhost:8000`. (Opening `index.html` directly works too, but offline mode needs a web server.)
 - **Icons:** `node tools/make-icons.js` redraws the PNG and SVG icons.
-- If saved data is unreadable, the app starts a fresh plan and keeps a copy of the bad data under `moneyBuddy.v1.broken`.
+- If saved data is unreadable, the app starts a fresh plan and keeps a copy of the bad data under `moneyBuddy.v2.broken`.
 
 ### The alert rules
 

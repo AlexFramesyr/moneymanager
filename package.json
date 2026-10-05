@@ -4,7 +4,7 @@
   "private": true,
   "description": "A simple budgeting web app for students in Syracuse University's InclusiveU program.",
   "scripts": {
-    "test": "node --test tests/logic.test.js",
+    "test": "node --test tests/logic.test.js tests/storage.test.js",
     "copy": "node tools/make-copy-md.js",
     "icons": "node tools/make-icons.js"
   }

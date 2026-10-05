@@ -34,6 +34,18 @@
         <p>Please turn it on.</p>
       </noscript>
     </main>
+
+    <!-- "Oops! Undo" bar. It comes right after the screen, so a screen reader
+         reaches it by swiping on from the last button. Words come from copy.js. -->
+    <div id="undo-bar" class="undo-bar" role="region" aria-labelledby="undo-label" hidden>
+      <div class="undo-inner">
+        <p id="undo-what" class="undo-what"></p>
+        <button id="undo-btn" class="btn btn-undo" type="button">
+          <span class="ic" aria-hidden="true">↩️</span><span class="btn-text" id="undo-label">Oops! Undo</span>
+        </button>
+        <span class="undo-timer" aria-hidden="true"><span></span></span>
+      </div>
+    </div>
   </div>
 
   <!-- Screen reader announcements -->

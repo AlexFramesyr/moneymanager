@@ -26,7 +26,12 @@
         goHome: 'Go home',
         typeNumber: 'Type a number.',
         typeNumberOrZero: 'Type a number. Type 0 if none.',
-        noSaveWarning: 'This phone may not save. Ask for help.'
+        noSaveWarning: 'This phone may not save. Ask for help.',
+        save: 'Save',
+        change: 'Change',
+        yes: 'Yes',
+        notYet: 'Not yet',
+        testDay: 'Test day: {date}'
       }
     },
     {
@@ -75,6 +80,9 @@
         bigDone: "I'm done",
         bigHowMuch: 'How much is it?',
         bigWhich: "Bank or 'Cuse Cash?",
+        bigDateTitle: 'When will you buy it?',
+        dontKnow: "I don't know",
+        bigPickTitle: 'What will you buy?',
         otherPickTitle: 'Pick a picture.',
         otherNameTitle: 'What is it called?',
         otherNameHint: 'You can skip this.',
@@ -136,7 +144,83 @@
         buySomething: 'I want to buy something',
         gotMoney: 'I got money',
         whatIBought: 'What I bought',
-        settings: 'Settings'
+        settings: 'Settings',
+        myCalendar: 'My calendar',
+        fixMoney: 'Fix my money',
+        fixMoneyLabel: 'Fix my money: {source}',
+        changeGoal: 'Change my save goal',
+        changeGoalLabel: 'Change my save goal: {source}'
+      }
+    },
+    {
+      name: 'Reminders (top of Home)',
+      items: {
+        remindToday: 'Today: {thing}, {amount}. Did you pay it?',
+        remindPast: 'Did you pay for {thing}?',
+        remindWasOn: 'It was on {date}.',
+        remindSoon: '{thing} is in {n} days.',
+        remindTomorrow: '{thing} is tomorrow.',
+        remindYesLabel: 'Yes, I paid {name}',
+        remindNotYetLabel: 'Not yet, {name}',
+        notYetDone: 'Okay. We will ask tomorrow.'
+      }
+    },
+    {
+      name: 'Calendar',
+      items: {
+        calTitle: 'My calendar',
+        calMonth: 'Month',
+        calList: 'List',
+        calViewLabel: 'Show as',
+        calWeekdays: 'Sun Mon Tue Wed Thu Fri Sat',
+        calToday: 'Today',
+        calNothing: 'Nothing planned',
+        calPast: 'Past day',
+        calNoDay: 'No day yet',
+        calListEmpty: 'No days picked yet.',
+        dayNothing: 'Nothing on this day.',
+        dayAdd: 'Add a big spend on this day'
+      }
+    },
+    {
+      name: 'Change a big thing',
+      items: {
+        bigEditTitle: 'Change this big thing',
+        changeAmount: 'Change amount',
+        changeDay: 'Change day',
+        notPaidYet: 'Not paid yet',
+        bigRemoveTitle: 'Remove {thing}, {amount}?',
+        removeBigUp: 'Your money will go back up.',
+        removeBigFree: 'Your free money will go up.'
+      }
+    },
+    {
+      name: 'Fix my money',
+      items: {
+        fixBankTitle: 'How much money is really in your bank?',
+        fixCuseTitle: "How much 'Cuse Cash do you really have?",
+        fixAppSays: 'The app says {amount}.',
+        fixSame: 'Okay. Nothing changed.',
+        fixedTitle: 'All fixed!',
+        goalDoneTitle: 'Saved!',
+        goalDoneText: 'You will save {amount}.'
+      }
+    },
+    {
+      name: 'Undo',
+      items: {
+        undoButton: 'Oops! Undo',
+        undoReady: 'Made a mistake? Tap Undo.',
+        undoDone: 'Okay. We undid it.',
+        undoBought: 'You bought {thing}, {amount}.',
+        undoGot: 'You got {amount}.',
+        undoPaid: 'You paid {thing}.',
+        undoFixed: 'You fixed your {source}.',
+        undoGoal: 'You changed your save goal.',
+        undoRemoved: 'You removed {thing}.',
+        undoChanged: 'You changed {thing}.',
+        undoAdded: 'You added {thing}.',
+        undoNotPaid: '{thing} is not paid.'
       }
     },
     {
@@ -177,6 +261,7 @@
         stopText: 'This money is for your plans.',
         loseHeading: 'You will not have enough for:',
         loseSave: 'Your savings',
+        loseOnDay: '{name} on {date}',
         notEnoughTitle: 'Not enough money',
         notEnoughText: 'You only have {amount}.',
         itemLine: '{thing}, {amount}, {source}',
@@ -221,9 +306,18 @@
         waitedNone: 'Here is what you bought.',
         listEmpty: 'Nothing yet.',
         youWaited: 'You waited!',
+        gotEntry: 'You got money',
+        fixedBank: 'You fixed your bank money',
+        fixedCuse: "You fixed your 'Cuse Cash",
+        plusWord: 'plus',
         removeLabel: 'Remove {thing}, {amount}, {date}',
-        removeTitle: 'Take this off the list?',
-        yesRemove: 'Yes, take it off',
+        removeTitle: 'Remove {amount} {thing}?',
+        removeGotTitle: 'Remove {amount} you got?',
+        removeFixTitle: 'Remove this fix of {amount}?',
+        removeUp: 'Your money will go back up.',
+        removeDown: 'Your money will go down.',
+        removeNone: 'It will come off the list.',
+        yesRemove: 'Yes, remove',
         noKeep: 'No, keep it',
         removedText: 'It is off the list.'
       }
@@ -264,6 +358,7 @@
     hand: '✋', star: '🌟', party: '🎉', note: '📝', cart: '🛒', cash: '💵',
     list: '📋', gear: '⚙️', moneyBag: '💰', smile: '😊', worried: '😟', sprout: '🌱',
     backspace: '⌫', dotGreen: '🟢', dotYellow: '🟡', dotRed: '🔴',
+    undo: '↩️', test: '🧪', bell: '🔔', later: '⏳',
     // Big-thing tiles
     concert: '🎟️', laundry: '🧺', gift: '🎂', food: '🍕', bus: '🚌', clothes: '👕', phone: '📱', other: '➕',
     // "Other" picture choices

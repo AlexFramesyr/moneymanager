@@ -3,10 +3,10 @@
  * Shows the saved copy right away (works with no internet), then quietly
  * fetches a fresh copy for next time.
  *
- * When you change any app file, raise the number in CACHE (v1 → v2)
+ * When you change any app file, raise the number in CACHE (v2 → v3)
  * so phones pick up the new version.
  */
-var CACHE = 'money-buddy-v1';
+var CACHE = 'money-buddy-v2';
 
 var FILES = [
   './',
