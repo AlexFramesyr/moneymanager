@@ -424,8 +424,7 @@ button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
 .btn-undo:active { background: #000; }
 .undo-timer { display: block; height: 8px; margin-top: 8px; border-radius: 4px; background: var(--surface); overflow: hidden; }
 .undo-timer span { display: block; height: 100%; width: 100%; background: var(--text-soft); }
-.undo-bar.is-ticking .undo-timer span { animation: undo-shrink 10s linear forwards; }
-.undo-bar.is-paused .undo-timer span { animation-play-state: paused; }
+.undo-bar.is-ticking .undo-timer span { animation: undo-shrink 5s linear forwards; }
 @keyframes undo-shrink { from { width: 100%; } to { width: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .undo-timer { display: none; }

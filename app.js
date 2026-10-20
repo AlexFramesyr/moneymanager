@@ -26,7 +26,7 @@
   var undoWhat = document.getElementById('undo-what');
 
   var SOURCES = L.SOURCES;
-  var UNDO_MS = 10000;
+  var UNDO_MS = 5000; // keep in step with undo-shrink in styles.css
 
   var TILES = [
     { key: 'savings', text: 'tileSavings', icon: I.pig },
@@ -277,59 +277,35 @@
       if (state.settings.autoRead !== false) readScreen();
     }
     updateGuard();
-    undoScreenChanged();
   }
 
   // ---------- "Oops! Undo" ----------
-  // The bar stays as long as the student is on the screen where it showed up,
-  // so a screen reader user always has time to swipe to it. After they move on,
-  // it stays 10 more seconds. The countdown pauses while the bar has focus or
-  // is being touched. (VoiceOver and TalkBack don't tell web pages where their
-  // own focus is, so the bar never hides from under a focused button either.)
+  // The bar shows for 5 seconds, then goes away. While the app's voice is
+  // reading, or a finger is on the bar, it waits; the 5 seconds start again
+  // after. (VoiceOver and TalkBack don't tell web pages when they finish, so
+  // only the app's own voice can be waited for.)
   // "❌ Remove" in "What I bought" is always there as a backup.
 
   var undoTimer = null;
 
   /** u: an undo note from logic.js. what: words saying what will be undone. */
   function offerUndo(u, what, said) {
-    clearTimeout(undoTimer);
-    ui.undo = { u: u, screen: current, ticking: false, paused: false };
+    ui.undo = { u: u, touched: false };
     undoWhat.textContent = what;
-    undoBar.classList.remove('is-ticking', 'is-paused');
     undoBar.hidden = false;
     document.body.classList.add('has-undo');
+    restartUndoTimer();
     announce(speakJoin([said, what, t('undoReady')]), false);
   }
 
-  function undoScreenChanged() {
-    if (ui.undo && !ui.undo.ticking && ui.undo.screen !== current) startUndoCountdown();
-  }
-
-  function startUndoCountdown() {
-    if (!ui.undo) return;
+  /** Starts the 5 seconds again, or holds the bar while reading or touched. */
+  function restartUndoTimer() {
     clearTimeout(undoTimer);
-    ui.undo.ticking = true;
-    ui.undo.paused = false;
-    undoBar.classList.remove('is-ticking', 'is-paused');
+    undoBar.classList.remove('is-ticking');
+    if (!ui.undo || reading || ui.undo.touched) return;
     void undoBar.offsetWidth; // restart the shrinking line
     undoBar.classList.add('is-ticking');
-    undoTimer = setTimeout(undoTimeUp, UNDO_MS);
-  }
-
-  function pauseUndo() {
-    if (!ui.undo || !ui.undo.ticking || ui.undo.paused) return;
-    clearTimeout(undoTimer);
-    ui.undo.paused = true;
-    undoBar.classList.add('is-paused');
-  }
-
-  function resumeUndo() {
-    if (ui.undo && ui.undo.paused) startUndoCountdown();
-  }
-
-  function undoTimeUp() {
-    if (undoBar.contains(document.activeElement)) { pauseUndo(); return; } // wait until focus leaves
-    hideUndo();
+    undoTimer = setTimeout(hideUndo, UNDO_MS);
   }
 
   function hideUndo() {
@@ -337,7 +313,7 @@
     var hadFocus = undoBar.contains(document.activeElement);
     ui.undo = null;
     undoBar.hidden = true;
-    undoBar.classList.remove('is-ticking', 'is-paused');
+    undoBar.classList.remove('is-ticking');
     document.body.classList.remove('has-undo');
     if (hadFocus) {
       var h = main.querySelector('h1');
@@ -357,19 +333,19 @@
     announce(t('undoDone'), false);
   });
 
-  undoBar.addEventListener('focusin', pauseUndo);
-  undoBar.addEventListener('focusout', function (e) {
-    if (!undoBar.contains(e.relatedTarget)) resumeUndo();
+  undoBar.addEventListener('pointerdown', function () {
+    if (!ui.undo) return;
+    ui.undo.touched = true;
+    restartUndoTimer();
   });
-  undoBar.addEventListener('pointerdown', pauseUndo);
-  undoBar.addEventListener('mouseenter', pauseUndo);
-  undoBar.addEventListener('mouseleave', function () {
-    if (!undoBar.contains(document.activeElement)) resumeUndo();
-  });
-  // A touch somewhere else starts the countdown again.
-  document.addEventListener('pointerdown', function (e) {
-    if (!undoBar.contains(e.target) && !undoBar.contains(document.activeElement)) resumeUndo();
-  }, true);
+  // The finger can lift anywhere, so listen on the whole page.
+  function undoLetGo() {
+    if (!ui.undo || !ui.undo.touched) return;
+    ui.undo.touched = false;
+    restartUndoTimer();
+  }
+  document.addEventListener('pointerup', undoLetGo, true);
+  document.addEventListener('pointercancel', undoLetGo, true);
 
   function updateGuard() {
     try {
@@ -403,6 +379,7 @@
     reading = on;
     readBtn.querySelector('.ic').textContent = on ? I.stop : I.read;
     readBtn.querySelector('.read-label').textContent = on ? t('stopReading') : t('readToMe');
+    if (ui.undo) restartUndoTimer();
   }
 
   function readScreen() {

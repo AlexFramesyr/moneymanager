@@ -30,7 +30,7 @@ The warnings get stricter as the month goes on, because there is less time left 
 - On the day of a big thing, Home asks **"Today: 🎟️ Concert, $60. Did you pay it?"** It also says when one is coming up in the next 3 days, and asks again if a day passes without it being paid. Until it is paid, that money stays saved for it.
 
 ### Fixing mistakes ✏️
-- **↩️ Oops! Undo:** after buying something, "I got money", "I paid it", or fixing money, a big Undo bar shows at the bottom. It stays while the student is on that screen, and for 10 seconds after they move on.
+- **↩️ Oops! Undo:** after buying something, "I got money", "I paid it", or fixing money, a big Undo bar shows at the bottom for 5 seconds, then goes away. If the app is reading out loud, or a finger is on the bar, it waits, and the 5 seconds start again after.
 - **✏️ Fix my money** (on each money card): type how much is *really* in the bank or on the 'Cuse Cash card. The app saves the difference, so the list still shows what happened.
 - **❌ Remove** on every line in **What I bought** (it asks first).
 - **Tap a big thing** on Home to change its amount or day, remove it, or say **Not paid yet** if it was marked paid by mistake.
