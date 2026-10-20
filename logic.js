@@ -122,7 +122,7 @@
   // ---------- money per source ----------
 
   function sourceOf(state, source) {
-    return (state.sources && state.sources[source]) || { start: 0, added: [], adjustments: [], saveGoal: 0 };
+    return (state.sources && state.sources[source]) || { start: 0, added: [], adjustments: [] };
   }
 
   /** Start money plus money added plus fixes. */
@@ -150,7 +150,7 @@
   }
 
   function protectedCents(state, source) {
-    return toCents(sourceOf(state, source).saveGoal) + sumCents(bigSpendsFor(state, source, false));
+    return sumCents(bigSpendsFor(state, source, false));
   }
 
   function freeCents(state, source) {
@@ -168,12 +168,11 @@
   function sourceSummary(state, source) {
     var s = sourceOf(state, source);
     var allBig = (state.bigSpends || []).filter(function (b) { return b.source === source; });
-    var plannedFree = haveCents(s) - toCents(s.saveGoal) - sumCents(allBig);
+    var plannedFree = haveCents(s) - sumCents(allBig);
     return {
       current: currentMoney(state, source),
       protected: protectedMoney(state, source),
       free: freeMoney(state, source),
-      saveGoal: fromCents(toCents(s.saveGoal)),
       unpaidBig: fromCents(sumCents(bigSpendsFor(state, source, false))),
       plannedFree: fromCents(plannedFree)
     };
@@ -203,7 +202,7 @@
 
   /**
    * What a purchase would take away. Money beyond free money comes out of
-   * unpaid big spends first (in the order they were added), then savings.
+   * unpaid big spends, in the order they were added.
    */
   function whatWouldHurt(state, source, amount) {
     // If free money is already negative, that gap counts too.
@@ -218,10 +217,6 @@
       out.push({ kind: 'bigSpend', id: b.id, name: b.name, icon: b.icon, date: b.date || null, amount: fromCents(c), short: fromCents(take) });
       short -= take;
     });
-    var goal = toCents(sourceOf(state, source).saveGoal);
-    if (short > 0 && goal > 0) {
-      out.push({ kind: 'save', amount: fromCents(goal), short: fromCents(Math.min(short, goal)) });
-    }
     return out;
   }
 
@@ -255,22 +250,6 @@
     };
   }
 
-  // ---------- setup checks ----------
-
-  function saveGoalOk(goal, have) {
-    return toCents(goal) <= toCents(have);
-  }
-
-  /** Sources where save goal + big spends is more than the money they have. */
-  function planShortfalls(state) {
-    return SOURCES.map(function (source) {
-      var s = sourceOf(state, source);
-      var have = haveCents(s);
-      var need = toCents(s.saveGoal) + sumCents((state.bigSpends || []).filter(function (b) { return b.source === source; }));
-      return { source: source, need: fromCents(need), have: fromCents(have), short: fromCents(need - have) };
-    }).filter(function (r) { return r.short > 0; });
-  }
-
   // ---------- state changes (each returns a new state) ----------
 
   function createState(month, opts) {
@@ -280,8 +259,8 @@
       month: month,
       setupComplete: false,
       sources: {
-        bank: { start: 0, added: [], adjustments: [], saveGoal: 0 },
-        cuse: { start: 0, added: [], adjustments: [], saveGoal: 0 }
+        bank: { start: 0, added: [], adjustments: [] },
+        cuse: { start: 0, added: [], adjustments: [] }
       },
       bigSpends: [],
       purchases: [],
@@ -313,26 +292,37 @@
     return next;
   }
 
-  function setSaveGoal(state, source, amount) {
-    var next = clone(state);
-    next.sources[source].saveGoal = fromCents(toCents(amount));
-    return next;
-  }
-
   function addBigSpend(state, item) {
     var next = clone(state);
+    var savings = item.savings === true;
     next.bigSpends.push({
       id: item.id || makeId(),
       name: item.name,
       icon: item.icon,
       amount: fromCents(toCents(item.amount)),
       source: item.source,
-      date: isDayKey(item.date) ? item.date : null,
+      date: !savings && isDayKey(item.date) ? item.date : null,
       paid: false,
       paidDate: null,
-      notYetOn: null
+      notYetOn: null,
+      savings: savings
     });
     return next;
+  }
+
+  /** The savings pot for a source (a big spend that is never paid and never resets), or null. */
+  function savingsFor(state, source) {
+    return (state.bigSpends || []).filter(function (b) { return b.savings && b.source === source; })[0] || null;
+  }
+
+  /**
+   * Puts money in savings. Each source has one pot: adding again makes it grow.
+   * item: { id, name, icon, amount, source } – id and name are used only for a new pot.
+   */
+  function addSavings(state, item) {
+    var pot = savingsFor(state, item.source);
+    if (pot) return updateBigSpend(state, pot.id, { amount: fromCents(toCents(pot.amount) + toCents(item.amount)) });
+    return addBigSpend(state, Object.assign({}, item, { savings: true, date: null }));
   }
 
   /** changes may hold amount and/or date (date null = "I don't know"). */
@@ -451,7 +441,6 @@
   //   { type: 'purchase', id }                  – take back a purchase
   //   { type: 'added', source, id }             – take back "I got money"
   //   { type: 'adjustment', source, id }        – take back "Fix my money"
-  //   { type: 'saveGoal', source, before }      – put the old save goal back
   //   { type: 'bigSpend', id, before, index }   – put a big spend back the way it was
   //   { type: 'restore', kind, source, record, index } – put a removed entry back
 
@@ -468,10 +457,6 @@
     return { type: 'restore', kind: entry.kind, source: entry.source, record: i === -1 ? null : clone(list[i]), index: i };
   }
 
-  function saveGoalUndo(state, source) {
-    return { type: 'saveGoal', source: source, before: sourceOf(state, source).saveGoal };
-  }
-
   function putBack(list, record, index) {
     if (indexById(list, record.id) !== -1) return;
     list.splice(Math.max(0, Math.min(index, list.length)), 0, record);
@@ -482,7 +467,6 @@
     if (u.type === 'purchase') return removePurchase(state, u.id);
     if (u.type === 'added') return removeAdded(state, u.source, u.id);
     if (u.type === 'adjustment') return removeAdjustment(state, u.source, u.id);
-    if (u.type === 'saveGoal') return setSaveGoal(state, u.source, u.before);
     var next = clone(state);
     if (u.type === 'bigSpend') {
       var i = indexById(next.bigSpends, u.id);
@@ -539,6 +523,9 @@
   /**
    * Called on every app open. Starts fresh if there is no saved state,
    * keeps the state if it is this month, or archives the old month.
+   * After setup, a new month keeps going: the money left in each source
+   * carries over, savings pots carry over, and other big spends become
+   * ideas to keep.
    */
   function startMonth(saved, date) {
     var key = monthKey(date);
@@ -546,28 +533,34 @@
     if (saved.month === key) return { state: saved, recap: null, changed: false };
 
     var history = (saved.history || []).slice();
-    var recap = null;
-    var suggestions;
-    if (saved.setupComplete) {
-      recap = monthRecap(saved);
-      history.push({
-        month: saved.month,
-        recap: recap,
-        sources: clone(saved.sources),
-        bigSpends: clone(saved.bigSpends),
-        purchases: clone(saved.purchases)
-      });
-      suggestions = saved.bigSpends.map(function (b) {
-        return { name: b.name, icon: b.icon, amount: b.amount, source: b.source };
-      });
-    } else {
+    function idea(b) { return { name: b.name, icon: b.icon, amount: b.amount, source: b.source }; }
+
+    if (!saved.setupComplete) {
       // An unfinished setup from an old month: keep its ideas, drop the rest.
-      suggestions = (saved.suggestions || []).concat(saved.bigSpends.map(function (b) {
-        return { name: b.name, icon: b.icon, amount: b.amount, source: b.source };
-      }));
+      var ideas = (saved.suggestions || []).concat(saved.bigSpends.map(idea));
+      return { state: createState(key, { history: history, settings: saved.settings, suggestions: ideas }), recap: null, changed: true };
     }
+
+    var recap = monthRecap(saved);
+    history.push({
+      month: saved.month,
+      recap: recap,
+      sources: clone(saved.sources),
+      bigSpends: clone(saved.bigSpends),
+      purchases: clone(saved.purchases)
+    });
     if (history.length > HISTORY_LIMIT) history = history.slice(history.length - HISTORY_LIMIT);
-    var state = createState(key, { history: history, settings: saved.settings, suggestions: suggestions });
+
+    var state = createState(key, {
+      history: history,
+      settings: saved.settings,
+      suggestions: saved.bigSpends.filter(function (b) { return !b.savings; }).map(idea)
+    });
+    state.setupComplete = true;
+    SOURCES.forEach(function (src) {
+      state.sources[src].start = fromCents(Math.max(0, currentCents(saved, src)));
+    });
+    state.bigSpends = saved.bigSpends.filter(function (b) { return b.savings && toCents(b.amount) > 0; }).map(clone);
     return { state: state, recap: recap, changed: true };
   }
 
@@ -658,7 +651,6 @@
       var r = raw.sources && raw.sources[src];
       if (!r || typeof r !== 'object') return;
       s.sources[src].start = money(r.start);
-      s.sources[src].saveGoal = money(r.saveGoal);
       s.sources[src].added = Array.isArray(r.added) ? r.added.filter(function (a) {
         return a && Number(a.amount) > 0;
       }).map(function (a) { return { id: str(a.id, makeId()), amount: money(a.amount), date: str(a.date, '') }; }) : [];
@@ -668,16 +660,18 @@
     });
 
     var cleanBig = function (b) {
+      var savings = b.savings === true;
       return {
         id: str(b.id, makeId()),
         name: str(b.name, 'Big thing'),
         icon: str(b.icon, '⭐'),
         amount: money(b.amount),
         source: b.source,
-        date: dayOrNull(b.date),
-        paid: b.paid === true,
-        paidDate: b.paid === true ? str(b.paidDate, null) : null,
-        notYetOn: dayOrNull(b.notYetOn)
+        date: savings ? null : dayOrNull(b.date),
+        paid: !savings && b.paid === true,
+        paidDate: !savings && b.paid === true ? str(b.paidDate, null) : null,
+        notYetOn: savings ? null : dayOrNull(b.notYetOn),
+        savings: savings
       };
     };
     var okBig = function (b) { return b && typeof b === 'object' && isSource(b.source) && Number(b.amount) > 0; };
@@ -841,14 +835,13 @@
     homeStatus: homeStatus,
     whatWouldHurt: whatWouldHurt,
     checkPurchase: checkPurchase,
-    saveGoalOk: saveGoalOk,
-    planShortfalls: planShortfalls,
     createState: createState,
     addMoney: addMoney,
     adjustmentNeeded: adjustmentNeeded,
     addAdjustment: addAdjustment,
-    setSaveGoal: setSaveGoal,
     addBigSpend: addBigSpend,
+    savingsFor: savingsFor,
+    addSavings: addSavings,
     updateBigSpend: updateBigSpend,
     removeBigSpend: removeBigSpend,
     markBigSpendPaid: markBigSpendPaid,
@@ -863,7 +856,6 @@
     removeEntry: removeEntry,
     bigSpendUndo: bigSpendUndo,
     removeUndo: removeUndo,
-    saveGoalUndo: saveGoalUndo,
     undo: undo,
     bigSpendsOn: bigSpendsOn,
     reminders: reminders,

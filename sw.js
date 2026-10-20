@@ -6,7 +6,7 @@
  * When you change any app file, raise the number in CACHE (v2 → v3)
  * so phones pick up the new version.
  */
-var CACHE = 'money-buddy-v2';
+var CACHE = 'money-buddy-v3';
 
 var FILES = [
   './',

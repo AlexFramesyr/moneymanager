@@ -6,13 +6,11 @@ const L = require('../logic.js');
 // Local-time date in October 2026 (month index 9).
 const oct = (day) => new Date(2026, 9, day, 12, 0, 0);
 
-/** A plan with $200 bank, saving $50, and no big spends unless given. */
-function plan({ start = 200, saveGoal = 50, cuseStart = 100, cuseSave = 0, big = [], purchases = [], added = [] } = {}) {
+/** A plan with $200 bank, $100 'Cuse Cash, and no big spends unless given. */
+function plan({ start = 200, cuseStart = 100, big = [], purchases = [], added = [] } = {}) {
   let s = L.createState('2026-10');
   s.sources.bank.start = start;
-  s.sources.bank.saveGoal = saveGoal;
   s.sources.cuse.start = cuseStart;
-  s.sources.cuse.saveGoal = cuseSave;
   s.setupComplete = true;
   big.forEach((b, i) => { s = L.addBigSpend(s, { id: 'b' + i, name: b.name || 'Thing ' + i, icon: '⭐', amount: b.amount, source: b.source || 'bank' }); if (b.paid) s = L.markBigSpendPaid(s, 'b' + i, oct(2).toISOString()); });
   purchases.forEach((p) => { s = L.recordPurchase(s, Object.assign({ source: 'bank', category: 'food', date: oct(3).toISOString(), choice: 'bought' }, p)); });
@@ -42,17 +40,17 @@ test('week threshold: day 22 to end of month is 10%', () => {
 // ---------- money math ----------
 
 test('current, protected and free money', () => {
-  const s = plan({ start: 200, saveGoal: 50, big: [{ amount: 60 }] });
+  const s = plan({ start: 200, big: [{ amount: 60 }] });
   assert.equal(L.currentMoney(s, 'bank'), 200);
-  assert.equal(L.protectedMoney(s, 'bank'), 110);
-  assert.equal(L.freeMoney(s, 'bank'), 90);
+  assert.equal(L.protectedMoney(s, 'bank'), 60);
+  assert.equal(L.freeMoney(s, 'bank'), 140);
 });
 
 test('sources are tracked separately', () => {
-  const s = plan({ start: 200, saveGoal: 50, cuseStart: 100, cuseSave: 20, big: [{ amount: 30, source: 'cuse' }], purchases: [{ amount: 10, source: 'cuse' }] });
-  assert.equal(L.freeMoney(s, 'bank'), 150);
+  const s = plan({ start: 200, cuseStart: 100, big: [{ amount: 30, source: 'cuse' }], purchases: [{ amount: 10, source: 'cuse' }] });
+  assert.equal(L.freeMoney(s, 'bank'), 200);
   assert.equal(L.currentMoney(s, 'cuse'), 90);
-  assert.equal(L.freeMoney(s, 'cuse'), 40);
+  assert.equal(L.freeMoney(s, 'cuse'), 60);
 });
 
 test('waited purchases do not lower money', () => {
@@ -61,32 +59,32 @@ test('waited purchases do not lower money', () => {
 });
 
 test('paid big spends leave current money and stop being protected', () => {
-  const s = plan({ start: 200, saveGoal: 50, big: [{ amount: 60, paid: true }, { amount: 20 }] });
+  const s = plan({ start: 200, big: [{ amount: 60, paid: true }, { amount: 20 }] });
   assert.equal(L.currentMoney(s, 'bank'), 140);
-  assert.equal(L.protectedMoney(s, 'bank'), 70);
-  assert.equal(L.freeMoney(s, 'bank'), 70);
+  assert.equal(L.protectedMoney(s, 'bank'), 20);
+  assert.equal(L.freeMoney(s, 'bank'), 120);
 });
 
 test('added money raises current and free money', () => {
-  const s = plan({ start: 200, saveGoal: 50, added: [{ amount: 25.5 }, { amount: 10 }] });
+  const s = plan({ start: 200, added: [{ amount: 25.5 }, { amount: 10 }] });
   assert.equal(L.currentMoney(s, 'bank'), 235.5);
-  assert.equal(L.freeMoney(s, 'bank'), 185.5);
+  assert.equal(L.freeMoney(s, 'bank'), 235.5);
 });
 
 test('cents add up exactly (no floating point drift)', () => {
-  const s = plan({ start: 0.3, saveGoal: 0, purchases: [{ amount: 0.1 }, { amount: 0.2 }] });
+  const s = plan({ start: 0.3, purchases: [{ amount: 0.1 }, { amount: 0.2 }] });
   assert.equal(L.currentMoney(s, 'bank'), 0);
 });
 
 test('free money can be negative', () => {
-  const s = plan({ start: 100, saveGoal: 50, big: [{ amount: 80 }] });
+  const s = plan({ start: 50, big: [{ amount: 80 }] });
   assert.equal(L.freeMoney(s, 'bank'), -30);
 });
 
 // ---------- alert levels ----------
-// Free money is $100 in all of these (start 150, save 50).
+// Free money is $100 in all of these (start 150, a $50 big thing).
 
-const free100 = () => plan({ start: 150, saveGoal: 50 });
+const free100 = () => plan({ start: 150, big: [{ name: 'Rent', amount: 50 }] });
 
 test('green when at or under the threshold (week 2, 40%)', () => {
   assert.equal(L.checkPurchase(free100(), 'bank', 40, oct(10)).level, 'green');
@@ -150,13 +148,13 @@ test('the same purchase gets stricter as the month goes on', () => {
 
 test('threshold math is exact for awkward cents', () => {
   // free = 33.33, 10% = 3.333 → 3.33 is green, 3.34 is yellow
-  const s = plan({ start: 33.33, saveGoal: 0 });
+  const s = plan({ start: 33.33 });
   assert.equal(L.checkPurchase(s, 'bank', 3.33, oct(25)).level, 'green');
   assert.equal(L.checkPurchase(s, 'bank', 3.34, oct(25)).level, 'yellow');
 });
 
 test('negative free money always gives red', () => {
-  const s = plan({ start: 100, saveGoal: 50, big: [{ amount: 80 }] }); // free −30
+  const s = plan({ start: 50, big: [{ amount: 80 }] }); // free −30
   for (const day of [1, 10, 18, 28]) {
     const r = L.checkPurchase(s, 'bank', 0.01, oct(day));
     assert.equal(r.level, 'red');
@@ -165,59 +163,60 @@ test('negative free money always gives red', () => {
 });
 
 test('zero free money: any purchase is red', () => {
-  const s = plan({ start: 50, saveGoal: 50 });
+  const s = plan({ start: 50, big: [{ amount: 50 }] });
   assert.equal(L.checkPurchase(s, 'bank', 1, oct(3)).level, 'red');
 });
 
 test('zero current money: any purchase is not enough', () => {
-  const s = plan({ start: 0, saveGoal: 0 });
+  const s = plan({ start: 0 });
   assert.equal(L.checkPurchase(s, 'bank', 1, oct(3)).reason, 'notEnough');
 });
 
 test('check uses only the chosen source', () => {
-  const s = plan({ start: 150, saveGoal: 50, cuseStart: 10 });
+  const s = plan({ start: 150, cuseStart: 10 });
   assert.equal(L.checkPurchase(s, 'bank', 30, oct(10)).level, 'green');
   assert.equal(L.checkPurchase(s, 'cuse', 30, oct(10)).reason, 'notEnough');
 });
 
 // ---------- what a red purchase would hurt ----------
 
-test('red stop names the big spend first, then savings', () => {
-  const s = plan({ start: 200, saveGoal: 50, big: [{ name: 'Concert', amount: 60 }] }); // free 90
+test('red stop names the big spend it would take from', () => {
+  const s = plan({ start: 150, big: [{ name: 'Concert', amount: 60 }] }); // free 90
   const r = L.checkPurchase(s, 'bank', 100, oct(10));
   assert.equal(r.reason, 'stop');
   assert.deepEqual(r.atRisk.map((x) => [x.kind, x.name, x.short]), [['bigSpend', 'Concert', 10]]);
 });
 
-test('red stop with multiple big spends goes in list order, then savings', () => {
-  const s = plan({ start: 300, saveGoal: 50, big: [{ name: 'Concert', amount: 60 }, { name: 'Gift', amount: 40 }] }); // free 150
+test('red stop with multiple big spends goes in list order', () => {
+  const s = plan({ start: 250, big: [{ name: 'Concert', amount: 60 }, { name: 'Gift', amount: 40 }] }); // free 150
   const r = L.checkPurchase(s, 'bank', 240, oct(10)); // 90 over
-  assert.deepEqual(r.atRisk.map((x) => [x.kind, x.name || 'save', x.short]), [
+  assert.deepEqual(r.atRisk.map((x) => [x.kind, x.name, x.short]), [
     ['bigSpend', 'Concert', 60], ['bigSpend', 'Gift', 30]
   ]);
-  const r2 = L.checkPurchase(s, 'bank', 280, oct(10)); // 130 over
-  assert.deepEqual(r2.atRisk.map((x) => [x.kind, x.short]), [['bigSpend', 60], ['bigSpend', 40], ['save', 30]]);
+  const r2 = L.checkPurchase(s, 'bank', 280, oct(10)); // 130 over: more than the big spends
+  assert.deepEqual(r2.atRisk.map((x) => [x.kind, x.short]), [['bigSpend', 60], ['bigSpend', 40]]);
 });
 
-test('red stop with no big spends names savings', () => {
-  const r = L.checkPurchase(free100(), 'bank', 120, oct(10));
-  assert.deepEqual(r.atRisk, [{ kind: 'save', amount: 50, short: 20 }]);
+test('red with no big spends names nothing at risk', () => {
+  const r = L.checkPurchase(plan({ start: 100 }), 'bank', 120, oct(10));
+  assert.equal(r.reason, 'notEnough');
+  assert.deepEqual(r.atRisk, []);
 });
 
 test('paid big spends are never listed as at risk', () => {
-  const s = plan({ start: 200, saveGoal: 50, big: [{ name: 'Concert', amount: 60, paid: true }] }); // current 140, free 90
-  const r = L.checkPurchase(s, 'bank', 100, oct(10));
-  assert.deepEqual(r.atRisk.map((x) => x.kind), ['save']);
+  const s = plan({ start: 200, big: [{ name: 'Concert', amount: 60, paid: true }] }); // current 140, free 140
+  const r = L.checkPurchase(s, 'bank', 150, oct(10));
+  assert.deepEqual(r.atRisk, []);
 });
 
 test('big spends on the other source are never listed', () => {
-  const s = plan({ start: 150, saveGoal: 50, big: [{ name: 'Laundry', amount: 20, source: 'cuse' }] });
+  const s = plan({ start: 150, big: [{ name: 'Rent', amount: 50 }, { name: 'Laundry', amount: 20, source: 'cuse' }] });
   const r = L.checkPurchase(s, 'bank', 120, oct(10));
-  assert.deepEqual(r.atRisk.map((x) => x.kind), ['save']);
+  assert.deepEqual(r.atRisk.map((x) => x.name), ['Rent']);
 });
 
 test('negative free money: the gap counts toward what is hurt', () => {
-  const s = plan({ start: 100, saveGoal: 50, big: [{ name: 'Concert', amount: 80 }] }); // free −30
+  const s = plan({ start: 50, big: [{ name: 'Concert', amount: 80 }] }); // free −30
   const r = L.checkPurchase(s, 'bank', 5, oct(10));
   assert.deepEqual(r.atRisk.map((x) => [x.name, x.short]), [['Concert', 35]]);
 });
@@ -226,35 +225,21 @@ test('green, yellow and orange have no at-risk list', () => {
   for (const amt of [10, 50, 90]) assert.deepEqual(L.checkPurchase(free100(), 'bank', amt, oct(10)).atRisk, []);
 });
 
-// ---------- setup checks ----------
-
-test('save goal must be no more than what you have', () => {
-  assert.equal(L.saveGoalOk(200, 200), true);
-  assert.equal(L.saveGoalOk(0, 0), true);
-  assert.equal(L.saveGoalOk(200.01, 200), false);
-});
-
-test('plan shortfalls flag a source where save + big spends is too much', () => {
-  const s = plan({ start: 100, saveGoal: 50, cuseStart: 40, big: [{ amount: 60 }, { amount: 30, source: 'cuse' }] });
-  assert.deepEqual(L.planShortfalls(s), [{ source: 'bank', need: 110, have: 100, short: 10 }]);
-  assert.deepEqual(L.planShortfalls(plan()), []);
-});
-
 // ---------- home status ----------
 
 test('home status: green when on pace, yellow when behind, red when low', () => {
   // planned free = 100. On Oct 16, 16 days left → expected (16−1)/31 ≈ 0.48
   assert.equal(L.homeStatus(free100(), 'bank', oct(16)), 'green');
-  const behind = plan({ start: 150, saveGoal: 50, purchases: [{ amount: 62 }] }); // 38% left
+  const behind = plan({ start: 100, purchases: [{ amount: 62 }] }); // 38% left
   assert.equal(L.homeStatus(behind, 'bank', oct(16)), 'yellow');
-  const low = plan({ start: 150, saveGoal: 50, purchases: [{ amount: 80 }] }); // 20% left
+  const low = plan({ start: 100, purchases: [{ amount: 80 }] }); // 20% left
   assert.equal(L.homeStatus(low, 'bank', oct(16)), 'red');
-  const none = plan({ start: 50, saveGoal: 50 });
+  const none = plan({ start: 50, big: [{ amount: 50 }] });
   assert.equal(L.homeStatus(none, 'bank', oct(1)), 'red');
 });
 
 test('home status: spending a little on day 1 is still green', () => {
-  const s = plan({ start: 150, saveGoal: 50, purchases: [{ amount: 3 }] });
+  const s = plan({ start: 100, purchases: [{ amount: 3 }] });
   assert.equal(L.homeStatus(s, 'bank', oct(1)), 'green');
 });
 
@@ -285,11 +270,13 @@ test('startMonth: same month keeps everything', () => {
 });
 
 test('startMonth: new month archives, gives a recap, and suggests big spends', () => {
-  let s = plan({ start: 200, saveGoal: 50, big: [{ name: 'Concert', amount: 60 }], purchases: [{ amount: 20 }, { amount: 15, choice: 'waited' }, { amount: 5, choice: 'waited' }] });
+  let s = plan({ start: 200, big: [{ name: 'Concert', amount: 60 }], purchases: [{ amount: 20 }, { amount: 15, choice: 'waited' }, { amount: 5, choice: 'waited' }] });
   s.settings.autoRead = false;
   const r = L.startMonth(s, new Date(2026, 10, 1));
   assert.equal(r.state.month, '2026-11');
-  assert.equal(r.state.setupComplete, false);
+  assert.equal(r.state.setupComplete, true); // setup happens only once
+  assert.equal(r.state.sources.bank.start, 180); // money left over carries into the new month
+  assert.equal(r.state.sources.cuse.start, 100);
   assert.deepEqual(r.state.purchases, []);
   assert.deepEqual(r.state.bigSpends, []);
   assert.equal(r.state.history.length, 1);
@@ -316,8 +303,19 @@ test('startMonth: unfinished old setup gives no recap and nothing archived', () 
   assert.equal(r.state.suggestions[0].name, 'Bus');
 });
 
+test('startMonth: money carries over after paid big spends, fixes and money in, never below $0', () => {
+  let s = plan({ start: 200, cuseStart: 10, big: [{ amount: 60, paid: true }], purchases: [{ amount: 30, source: 'cuse' }] });
+  s = L.addAdjustment(L.addMoney(s, 'bank', 25, oct(4).toISOString()), 'bank', 150, oct(5).toISOString());
+  const r = L.startMonth(s, new Date(2026, 10, 1));
+  assert.equal(r.state.sources.bank.start, 150);
+  assert.equal(r.state.sources.cuse.start, 0); // −20 carries as 0
+  assert.deepEqual(r.state.sources.bank.added, []);
+  assert.deepEqual(r.state.sources.bank.adjustments, []);
+  assert.equal(L.currentMoney(r.state, 'bank'), 150);
+});
+
 test('recap never counts negative money as saved', () => {
-  const s = plan({ start: 10, saveGoal: 0, purchases: [{ amount: 30 }] });
+  const s = plan({ start: 10, purchases: [{ amount: 30 }] });
   assert.equal(L.monthRecap(s).savedTotal, 100); // bank −20 counts as 0, cuse 100
 });
 
@@ -356,7 +354,7 @@ test('sanitizeState keeps good data and drops bad entries', () => {
     settings: { autoRead: false }
   });
   assert.equal(s.sources.bank.start, 200);
-  assert.equal(s.sources.bank.saveGoal, 0);
+  assert.equal('saveGoal' in s.sources.bank, false); // old save goals are dropped
   assert.deepEqual(s.sources.bank.added.map((a) => a.amount), [5]);
   assert.equal(s.sources.cuse.start, 0);
   assert.equal(s.bigSpends.length, 1);
@@ -440,12 +438,12 @@ const ISO = (day) => oct(day).toISOString();
 // ---------- Fix my money (adjustments) ----------
 
 test('fix my money saves only the difference, as an adjustment', () => {
-  const s = plan({ start: 200, saveGoal: 50, purchases: [{ amount: 30 }] }); // app says 170
+  const s = plan({ start: 200, purchases: [{ amount: 30 }] }); // app says 170
   assert.equal(L.adjustmentNeeded(s, 'bank', 150), -20);
   const t = L.addAdjustment(s, 'bank', 150, ISO(6), 'fix1');
   assert.deepEqual(t.sources.bank.adjustments, [{ id: 'fix1', amount: -20, date: ISO(6) }]);
   assert.equal(L.currentMoney(t, 'bank'), 150);
-  assert.equal(L.freeMoney(t, 'bank'), 100);
+  assert.equal(L.freeMoney(t, 'bank'), 150);
   // Nothing in the past was changed.
   assert.equal(t.sources.bank.start, 200);
   assert.deepEqual(t.purchases, s.purchases);
@@ -472,26 +470,20 @@ test('fix my money: cents stay exact', () => {
   assert.equal(L.currentMoney(t, 'bank'), 0.3);
 });
 
-test('adjustments count in planned free money, home status, shortfalls and the recap', () => {
-  let s = plan({ start: 150, saveGoal: 50 });
-  s = L.addAdjustment(s, 'bank', 100, ISO(2)); // −50
+test('adjustments count in planned free money, home status, free money and the recap', () => {
+  let s = plan({ start: 100 });
+  s = L.addAdjustment(s, 'bank', 50, ISO(2)); // −50
   assert.equal(L.sourceSummary(s, 'bank').plannedFree, 50);
   assert.equal(L.homeStatus(s, 'bank', oct(2)), 'green'); // 50 of 50 free left
-  assert.equal(L.monthRecap(s).savedTotal, 200); // bank 100 + cuse 100
-  const short = L.addAdjustment(plan({ start: 100, saveGoal: 50, big: [{ amount: 40 }] }), 'bank', 60, ISO(2));
-  assert.deepEqual(L.planShortfalls(short), [{ source: 'bank', need: 90, have: 60, short: 30 }]);
+  assert.equal(L.monthRecap(s).savedTotal, 150); // bank 50 + cuse 100
+  const short = L.addAdjustment(plan({ start: 100, big: [{ amount: 40 }] }), 'bank', 30, ISO(2));
+  assert.equal(L.freeMoney(short, 'bank'), -10);
 });
 
 test('alerts use the fixed amount', () => {
   const s = L.addAdjustment(free100(), 'bank', 100, ISO(10)); // current 100, free 50
   assert.equal(L.checkPurchase(s, 'bank', 50, oct(10)).level, 'orange');
   assert.equal(L.checkPurchase(s, 'bank', 50.01, oct(10)).reason, 'stop');
-});
-
-test('change save goal', () => {
-  const s = L.setSaveGoal(plan({ start: 200, saveGoal: 50 }), 'bank', 80);
-  assert.equal(s.sources.bank.saveGoal, 80);
-  assert.equal(L.freeMoney(s, 'bank'), 120);
 });
 
 // ---------- removing entries ----------
@@ -575,12 +567,6 @@ test('undo "Fix my money"', () => {
   assertUndoes(s, L.addAdjustment(s, 'bank', 123, ISO(5), 'f'), { type: 'adjustment', source: 'bank', id: 'f' });
 });
 
-test('undo a save goal change', () => {
-  const s = plan({ saveGoal: 50 });
-  const u = L.saveGoalUndo(s, 'bank');
-  assertUndoes(s, L.setSaveGoal(s, 'bank', 75), u);
-});
-
 test('undo removing an entry puts it back in the same place', () => {
   const s = plan({ purchases: [{ id: 'p1', amount: 1 }, { id: 'p2', amount: 2 }, { id: 'p3', amount: 3 }] });
   const entry = L.activityList(s).find((x) => x.id === 'p2');
@@ -622,20 +608,20 @@ test('undo twice is harmless', () => {
 // ---------- un-paying a big spend ----------
 
 test('"Not paid yet" puts the money back and protects it again', () => {
-  const s = plan({ start: 200, saveGoal: 50, big: [{ amount: 60, paid: true }] });
+  const s = plan({ start: 200, big: [{ amount: 60, paid: true }] });
   assert.equal(L.currentMoney(s, 'bank'), 140);
   const t = L.unmarkBigSpendPaid(s, 'b0');
   assert.equal(t.bigSpends[0].paid, false);
   assert.equal(t.bigSpends[0].paidDate, null);
   assert.equal(L.currentMoney(t, 'bank'), 200);
-  assert.equal(L.protectedMoney(t, 'bank'), 110);
-  assert.equal(L.freeMoney(t, 'bank'), 90);
+  assert.equal(L.protectedMoney(t, 'bank'), 60);
+  assert.equal(L.freeMoney(t, 'bank'), 140);
 });
 
 test('changing a big spend amount changes what is protected', () => {
-  const s = L.updateBigSpend(plan({ start: 200, saveGoal: 50, big: [{ amount: 60 }] }), 'b0', { amount: 80.5 });
+  const s = L.updateBigSpend(plan({ start: 200, big: [{ amount: 60 }] }), 'b0', { amount: 80.5 });
   assert.equal(s.bigSpends[0].amount, 80.5);
-  assert.equal(L.freeMoney(s, 'bank'), 69.5);
+  assert.equal(L.freeMoney(s, 'bank'), 119.5);
 });
 
 // ---------- dated big spends ----------
@@ -673,16 +659,16 @@ test('big spends can have a day, or none', () => {
 });
 
 test('dates do not change the alert math, but red alerts include the day', () => {
-  const undated = plan({ start: 200, saveGoal: 50, big: [{ name: 'Concert', amount: 60 }] });
+  const undated = plan({ start: 200, big: [{ name: 'Concert', amount: 60 }] }); // free 140
   const withDay = L.updateBigSpend(undated, 'b0', { date: '2026-10-12' });
-  for (const amt of [20, 50, 89, 90, 100, 200, 201]) {
+  for (const amt of [20, 50, 139, 140, 150, 200, 201]) {
     const a = L.checkPurchase(undated, 'bank', amt, oct(10));
     const b = L.checkPurchase(withDay, 'bank', amt, oct(10));
     assert.equal(a.level, b.level);
     assert.equal(a.reason, b.reason);
   }
-  assert.equal(L.checkPurchase(withDay, 'bank', 100, oct(10)).atRisk[0].date, '2026-10-12');
-  assert.equal(L.checkPurchase(undated, 'bank', 100, oct(10)).atRisk[0].date, null);
+  assert.equal(L.checkPurchase(withDay, 'bank', 150, oct(10)).atRisk[0].date, '2026-10-12');
+  assert.equal(L.checkPurchase(undated, 'bank', 150, oct(10)).atRisk[0].date, null);
 });
 
 function dated(list) {
@@ -711,10 +697,10 @@ test('reminders: due today, in 1–3 days, and overdue', () => {
 });
 
 test('an overdue big spend stays protected until it is paid', () => {
-  const s = dated([{ date: '2026-10-03' }]); // $50 save goal + $10 big spend
-  assert.equal(L.protectedMoney(s, 'bank'), 60);
-  assert.equal(L.freeMoney(s, 'bank'), 440);
-  assert.equal(L.checkPurchase(s, 'bank', 445, oct(10)).atRisk[0].id, 'd0');
+  const s = dated([{ date: '2026-10-03' }]); // one $10 big spend
+  assert.equal(L.protectedMoney(s, 'bank'), 10);
+  assert.equal(L.freeMoney(s, 'bank'), 490);
+  assert.equal(L.checkPurchase(s, 'bank', 495, oct(10)).atRisk[0].id, 'd0');
 });
 
 test('"Not yet" hides a reminder until tomorrow', () => {
@@ -734,6 +720,64 @@ test('next month suggestions do not keep the day', () => {
   const r = L.startMonth(s, new Date(2026, 10, 1));
   assert.equal('date' in r.state.suggestions[0], false);
   assert.equal(r.state.history[0].bigSpends[0].date, '2026-10-12');
+});
+
+// ---------- savings ----------
+
+const pig = (amount, source = 'bank', id = 's1') => ({ id, name: 'Savings', icon: '🐷', amount, source });
+
+test('savings is set aside like a big spend, with no day', () => {
+  const s = L.addSavings(plan({ start: 200 }), Object.assign(pig(40), { date: '2026-10-12' }));
+  assert.equal(L.freeMoney(s, 'bank'), 160);
+  assert.equal(L.currentMoney(s, 'bank'), 200);
+  assert.equal(s.bigSpends[0].savings, true);
+  assert.equal(s.bigSpends[0].date, null);
+  assert.equal(L.savingsFor(s, 'bank').id, 's1');
+  assert.equal(L.savingsFor(s, 'cuse'), null);
+});
+
+test('adding to savings again grows the one pot for that source', () => {
+  let s = L.addSavings(plan(), pig(40));
+  s = L.addSavings(s, pig(12.5, 'bank', 'other'));
+  s = L.addSavings(s, pig(5, 'cuse', 'c1'));
+  assert.deepEqual(s.bigSpends.map((b) => [b.id, b.source, b.amount]), [['s1', 'bank', 52.5], ['c1', 'cuse', 5]]);
+});
+
+test('undo adding to savings puts the pot back the way it was', () => {
+  const s = L.addSavings(plan(), pig(40));
+  assertUndoes(s, L.addSavings(s, pig(10)), L.bigSpendUndo(s, 's1'));
+  const empty = plan();
+  assertUndoes(empty, L.addSavings(empty, pig(10)), L.bigSpendUndo(empty, 's1'));
+});
+
+test('a red alert names savings when it would take from it', () => {
+  const s = L.addSavings(plan({ start: 100 }), pig(30)); // free 70
+  const r = L.checkPurchase(s, 'bank', 80, oct(10));
+  assert.equal(r.reason, 'stop');
+  assert.deepEqual(r.atRisk.map((x) => [x.name, x.short]), [['Savings', 10]]);
+});
+
+test('startMonth: savings carries over and keeps growing; other big spends reset', () => {
+  let s = plan({ start: 200, big: [{ name: 'Concert', amount: 60, paid: true }, { name: 'Gift', amount: 20 }] });
+  s = L.addSavings(s, pig(50));
+  const r = L.startMonth(s, new Date(2026, 10, 1));
+  assert.equal(r.state.sources.bank.start, 140);
+  assert.deepEqual(r.state.bigSpends.map((b) => [b.id, b.amount, b.savings]), [['s1', 50, true]]);
+  assert.equal(L.freeMoney(r.state, 'bank'), 90);
+  assert.deepEqual(r.state.suggestions.map((x) => x.name), ['Concert', 'Gift']);
+  const grown = L.addSavings(r.state, pig(25));
+  assert.equal(L.savingsFor(grown, 'bank').amount, 75);
+});
+
+test('sanitizeState keeps savings and never gives it a day or "paid"', () => {
+  const raw = JSON.parse(JSON.stringify(L.addSavings(plan(), pig(40))));
+  Object.assign(raw.bigSpends[0], { date: '2026-10-12', paid: true, paidDate: ISO(3), notYetOn: '2026-10-12' });
+  const s = L.sanitizeState(raw);
+  assert.deepEqual(s.bigSpends[0], { id: 's1', name: 'Savings', icon: '🐷', amount: 40, source: 'bank', date: null, paid: false, paidDate: null, notYetOn: null, savings: true });
+  // Big spends saved before savings existed are not savings.
+  const old = JSON.parse(JSON.stringify(plan({ big: [{ amount: 5 }] })));
+  delete old.bigSpends[0].savings;
+  assert.equal(L.sanitizeState(old).bigSpends[0].savings, false);
 });
 
 // ---------- v1 → v2 migration ----------
@@ -786,7 +830,7 @@ test('migrate v1 → v2: all the money is the same as before', () => {
   assert.ok(s);
   assert.equal(s.setupComplete, true);
   assert.equal(L.currentMoney(s, 'bank'), 213); // 200 + 25 − 12
-  assert.equal(L.freeMoney(s, 'bank'), 103);    // − 50 save − 60 concert
+  assert.equal(L.freeMoney(s, 'bank'), 153);    // − 60 concert (the old $50 save goal is dropped)
   assert.equal(L.currentMoney(s, 'cuse'), 90);  // 100 − 10 paid laundry
   assert.equal(s.settings.autoRead, false);
   assert.equal(s.history.length, 1);

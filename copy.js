@@ -63,26 +63,29 @@
         start: 'Start',
         bankTitle: 'How much money is in your bank?',
         cuseTitle: "How much 'Cuse Cash do you have?",
-        saveBankTitle: 'How much bank money to save?',
-        saveCuseTitle: "How much 'Cuse Cash to save?",
-        saveHint: 'This is money you save.',
-        saveHint2: 'Do not spend it.',
-        youHave: 'You have {amount}.',
-        saveTooMuch: 'That is more than you have. Try a smaller number.',
-        bigTitle: 'What big things will you buy this month?',
+        summaryTitle: 'Your plan is ready!',
+        rowHave: 'You have',
+        rowBig: 'Big things',
+        rowBigSub: 'Kept for your big things.',
+        rowFree: 'Free to spend',
+        summaryBigHint: 'You can add big things later.',
+        goToMoney: 'Go to my money'
+      }
+    },
+    {
+      name: 'Add a big thing',
+      items: {
+        bigPickTitle: 'What will you buy?',
         bigLastMonth: 'Last month you had:',
         bigKeep: 'Keep',
         bigKeepLabel: 'Keep {name}, {amount}',
-        bigYours: 'Your big things:',
-        bigAdd: 'Tap a picture to add one.',
+        bigNew: 'Or tap a picture:',
         bigRemove: 'Remove',
-        bigRemoveLabel: 'Remove {name}, {amount}',
-        bigDone: "I'm done",
         bigHowMuch: 'How much is it?',
+        savingsHowMuch: 'How much to save?',
         bigWhich: "Bank or 'Cuse Cash?",
         bigDateTitle: 'When will you buy it?',
         dontKnow: "I don't know",
-        bigPickTitle: 'What will you buy?',
         otherPickTitle: 'Pick a picture.',
         otherNameTitle: 'What is it called?',
         otherNameHint: 'You can skip this.',
@@ -91,18 +94,13 @@
         planShortText: 'You do not have enough {source} for all of this.',
         planShortNumbers: 'You need {need}. You have {have}.',
         changeIt: 'Change it',
-        keepGoing: 'Keep going',
-        summaryTitle: 'Your plan is ready!',
-        rowHave: 'You have',
-        rowSave: 'Save',
-        rowSaveSub: 'For your goal and big things.',
-        rowFree: 'Free to spend',
-        goToMoney: 'Go to my money'
+        keepGoing: 'Keep going'
       }
     },
     {
       name: 'Big things (pictures to tap)',
       items: {
+        tileSavings: 'Savings',
         tileConcert: 'Concert',
         tileLaundry: 'Laundry',
         tileGift: 'Birthday gift',
@@ -133,11 +131,13 @@
         daysLeftOne: 'Last day of the month',
         freeToSpend: 'Free to spend',
         youHaveShort: 'You have {amount}',
-        usedSave: 'You used {amount} of save money.',
+        shortBy: 'Big things need {amount} more.',
         statusGreen: 'Doing great',
         statusYellow: 'Be careful',
         statusRed: 'Low',
-        bigToPay: 'Big things to pay',
+        bigToPay: 'My big things',
+        bigNone: 'No big things yet.',
+        addBig: 'Add a big thing',
         paidIt: 'I paid it',
         paidItLabel: 'I paid it: {name}, {amount}',
         paidDone: 'Paid',
@@ -147,9 +147,7 @@
         settings: 'Settings',
         myCalendar: 'My calendar',
         fixMoney: 'Fix my money',
-        fixMoneyLabel: 'Fix my money: {source}',
-        changeGoal: 'Change my save goal',
-        changeGoalLabel: 'Change my save goal: {source}'
+        fixMoneyLabel: 'Fix my money: {source}'
       }
     },
     {
@@ -201,9 +199,7 @@
         fixCuseTitle: "How much 'Cuse Cash do you really have?",
         fixAppSays: 'The app says {amount}.',
         fixSame: 'Okay. Nothing changed.',
-        fixedTitle: 'All fixed!',
-        goalDoneTitle: 'Saved!',
-        goalDoneText: 'You will save {amount}.'
+        fixedTitle: 'All fixed!'
       }
     },
     {
@@ -216,10 +212,10 @@
         undoGot: 'You got {amount}.',
         undoPaid: 'You paid {thing}.',
         undoFixed: 'You fixed your {source}.',
-        undoGoal: 'You changed your save goal.',
         undoRemoved: 'You removed {thing}.',
         undoChanged: 'You changed {thing}.',
         undoAdded: 'You added {thing}.',
+        undoSaved: 'You saved {amount}.',
         undoNotPaid: '{thing} is not paid.'
       }
     },
@@ -260,7 +256,6 @@
         stopTitle: 'Stop!',
         stopText: 'This money is for your plans.',
         loseHeading: 'You will not have enough for:',
-        loseSave: 'Your savings',
         loseOnDay: '{name} on {date}',
         notEnoughTitle: 'Not enough money',
         notEnoughText: 'You only have {amount}.',
@@ -269,7 +264,6 @@
         buyAnyway: 'Buy it anyway',
         sureTitle: 'Are you sure?',
         sureBig: 'Your {thing} money will go down.',
-        sureSave: 'Your save money will go down.',
         sureNotEnough: 'Your money will go below zero.',
         noWait: 'No, wait',
         yesBuy: 'Yes, buy it'
@@ -282,7 +276,7 @@
         greenText: 'You bought {thing} for {amount}.',
         freeLeft: 'You have {amount} free to spend.',
         waitedTitle: 'Great choice!',
-        waitedText: 'You saved {amount}.',
+        waitedText: "You didn't spend {amount}.",
         boughtTitle: 'Okay. We wrote it down.'
       }
     },
@@ -335,11 +329,11 @@
       name: 'New month',
       items: {
         newMonthTitle: 'New month!',
-        recapSaved: 'Last month you saved {amount}.',
-        recapWaitedMany: 'You waited {n} times.',
-        recapWaitedOne: 'You waited 1 time.',
+        recapSaved: 'You saved {amount}!',
         recapFresh: 'New month. New start!',
-        makePlan: 'Make a new plan'
+        newMonthGot: 'Did you get money?',
+        newMonthYes: 'Yes, I got money',
+        newMonthNo: 'No new money'
       }
     },
     {

@@ -29,6 +29,7 @@
   var UNDO_MS = 10000;
 
   var TILES = [
+    { key: 'savings', text: 'tileSavings', icon: I.pig },
     { key: 'concert', text: 'tileConcert', icon: I.concert },
     { key: 'laundry', text: 'tileLaundry', icon: I.laundry },
     { key: 'gift', text: 'tileGift', icon: I.gift },
@@ -188,7 +189,7 @@
   function actions(inner, cls) { return '<div class="actions' + (cls ? ' ' + cls : '') + '">' + inner + '</div>'; }
 
   function progress(n) {
-    var total = 5;
+    var total = 3;
     return '<div class="progress"><p class="progress-text">' + esc(t('stepOf', { n: n, total: total })) + '</p>' +
       '<div class="progress-bar" aria-hidden="true"><span style="width:' + (n / total * 100) + '%"></span></div></div>';
   }
@@ -215,7 +216,7 @@
     return '<li class="card item-card big-card' + (b.paid ? ' is-paid' : '') + '">' +
       '<button type="button" class="item-btn" data-act="editBig" data-id="' + esc(b.id) + '" data-from="' + esc(from) + '">' +
       itemBody(b) + '<span class="edit-hint">' + ic(I.pencil) + '<span>' + esc(t('change')) + '</span></span></button>' +
-      (b.paid
+      (b.savings ? '' : b.paid
         ? '<p class="paid-tag">' + ic(I.check) + '<span>' + esc(t('paidDone')) + '</span></p>'
         : button('paid', t('paidIt'), I.check, { cls: 'btn-small btn-secondary', data: { id: b.id, from: from }, aria: t('paidItLabel', { name: b.name, amount: words(b.amount) }) })) +
       '</li>';
@@ -668,20 +669,22 @@
   var SCREENS = {
 
     // ----- new month -----
+    // The first open of a new month: celebrate what was saved, then ask about new money.
     recap: function () {
       var r = ui.recap;
-      var lines = [];
-      if (r.savedTotal > 0) lines.push([I.pig, t('recapSaved', { amount: fmt(r.savedTotal) })]);
-      if (r.waitedCount === 1) lines.push([I.star, t('recapWaitedOne')]);
-      if (r.waitedCount > 1) lines.push([I.star, t('recapWaitedMany', { n: r.waitedCount })]);
-      if (!lines.length) lines.push([I.sprout, t('recapFresh')]);
+      var saved = r.savedTotal > 0;
+      var line = saved ? t('recapSaved', { amount: fmt(r.savedTotal) }) : t('recapFresh');
       return {
         title: t('newMonthTitle'),
-        html: '<div class="hero">' + ic(I.calendar, 'ic-hero') + '</div>' + h1(t('newMonthTitle')) +
-          lines.map(function (l) { return '<p class="big-line">' + ic(l[0]) + '<span>' + esc(l[1]) + '</span></p>'; }).join('') +
-          actions(button('start', t('makePlan'), I.start)),
-        speak: function () { return speakJoin([t('newMonthTitle')].concat(lines.map(function (l) { return l[1]; }))); },
-        actions: { start: function () { ui.recap = null; go('setupBank'); } }
+        html: '<div class="done">' + ic(saved ? I.party : I.sprout, 'ic-hero' + (saved ? ' pop' : '')) + h1(t('newMonthTitle')) +
+          '<p class="big-line"><span>' + esc(line) + '</span></p>' +
+          '<h2>' + esc(t('newMonthGot')) + '</h2></div>' +
+          actions(button('got', t('newMonthYes'), I.cash) + button('skip', t('newMonthNo'), I.next, { cls: 'btn-secondary' })),
+        speak: function () { return speakJoin([t('newMonthTitle'), line, t('newMonthGot')]); },
+        actions: {
+          got: function () { ui.recap = null; ui.got = {}; go('gotAmount'); },
+          skip: function () { ui.recap = null; go('home'); }
+        }
       };
     },
 
@@ -710,99 +713,58 @@
         step: 2, title: t('cuseTitle'), icon: I.cuse, allowZero: true,
         initial: initialFor('cuseStart', state.sources.cuse.start),
         onBack: function () { go('setupBank'); },
-        onNext: function (v) { state.sources.cuse.start = v; ui.seen.cuseStart = true; save(); go('setupSaveBank'); }
+        onNext: function (v) { state.sources.cuse.start = v; ui.seen.cuseStart = true; save(); go('summary'); }
       });
     },
 
-    setupSaveBank: function () { return saveGoalScreen('bank', 'saveBankTitle', 'setupCuse', 'setupSaveCuse'); },
-    setupSaveCuse: function () { return saveGoalScreen('cuse', 'saveCuseTitle', 'setupSaveBank', 'setupBig'); },
-
-    setupBig: function (p) {
+    // ----- adding a big spend (from Home or a day screen) -----
+    // Big things from last month come first, with "Keep", then the pictures.
+    bigPick: function () {
+      var b = ui.big;
+      if (!b) return SCREENS.home();
       var sugg = state.suggestions || [];
-      var mine = state.bigSpends;
-      var html = progress(4) + h1(t('bigTitle'));
-
+      var html = h1(t('bigPickTitle')) + (b.presetDate ? chip(I.calendar, L.formatShortDate(b.presetDate)) : '');
       if (sugg.length) {
         html += '<h2>' + esc(t('bigLastMonth')) + '</h2><ul class="cards">' + sugg.map(function (s, i) {
           return '<li class="card item-card">' + itemBody(s) +
             button('keep', t('bigKeep'), I.plus, { cls: 'btn-small btn-secondary', data: { i: i }, aria: t('bigKeepLabel', { name: s.name, amount: words(s.amount) }) }) + '</li>';
-        }).join('') + '</ul>';
+        }).join('') + '</ul><h2>' + esc(t('bigNew')) + '</h2>';
       }
-      if (mine.length) {
-        html += '<h2 id="yours" tabindex="-1">' + esc(t('bigYours')) + '</h2><ul class="cards">' + mine.map(function (b) {
-          return '<li class="card item-card">' + itemBody(b) +
-            button('remove', t('bigRemove'), I.remove, { cls: 'btn-small btn-secondary', data: { id: b.id }, aria: t('bigRemoveLabel', { name: b.name, amount: words(b.amount) }) }) + '</li>';
-        }).join('') + '</ul>';
-      }
-      html += '<h2>' + esc(t('bigAdd')) + '</h2>' + tilesHTML();
-      html += actions(button('done', t('bigDone'), I.check) + backBtn());
-
       return {
-        title: t('bigTitle'),
-        html: html,
-        focus: p.focus,
-        back: function () { go('setupSaveCuse'); },
+        title: t('bigPickTitle'),
+        html: html + tilesHTML() + actions(backBtn()),
         speak: function () {
-          var parts = [t('bigTitle')];
+          var parts = [t('bigPickTitle'), b.presetDate ? L.formatLongDate(b.presetDate) : null];
           if (sugg.length) {
             parts.push(t('bigLastMonth'));
             sugg.forEach(function (s) { parts.push(s.name + ', ' + fmt(s.amount)); });
+            parts.push(t('bigNew'));
           }
-          if (mine.length) {
-            parts.push(t('bigYours'));
-            mine.forEach(function (b) { parts.push(b.name + ', ' + fmt(b.amount)); });
-          }
-          parts.push(t('bigAdd'));
-          return speakJoin(parts);
+          return speakJoin(parts.concat(TILES.map(function (x) { return t(x.text); })));
         },
+        back: function () { ui.big = null; goTo(fromWhere(b.from)); },
         actions: {
-          tile: function (d) { pickTile(d.key, { inSetup: true }); },
+          tile: function (d) { pickTile(d.key, { presetDate: b.presetDate, from: b.from }); },
           keep: function (d) {
-            var s = state.suggestions[Number(d.i)];
+            var s = sugg[Number(d.i)];
             if (!s) return;
-            state = L.addBigSpend(state, s);
             state.suggestions.splice(Number(d.i), 1);
-            save();
-            go('setupBig', { focus: '#yours' });
-          },
-          remove: function (d) {
-            state = L.removeBigSpend(state, d.id);
-            save();
-            go('setupBig', { focus: '#yours' });
-          },
-          done: function () {
-            go(L.planShortfalls(state).length ? 'planShort' : 'summary');
+            ui.big = Object.assign({}, s, { presetDate: b.presetDate, from: b.from });
+            finishBig(b.presetDate || null);
           }
         }
-      };
-    },
-
-    // Adding a big spend after setup (from a day screen): the same pictures.
-    bigPick: function () {
-      var b = ui.big;
-      if (!b) return SCREENS.home();
-      return {
-        title: t('bigPickTitle'),
-        html: h1(t('bigPickTitle')) + (b.presetDate ? chip(I.calendar, L.formatShortDate(b.presetDate)) : '') +
-          tilesHTML() + actions(backBtn()),
-        speak: function () {
-          return speakJoin([t('bigPickTitle'), b.presetDate ? L.formatLongDate(b.presetDate) : null]
-            .concat(TILES.map(function (x) { return t(x.text); })));
-        },
-        back: function () { var to = b.returnTo; ui.big = null; goTo(to); },
-        actions: { tile: function (d) { pickTile(d.key, { presetDate: b.presetDate, returnTo: b.returnTo }); } }
       };
     },
 
     bigOtherIcon: function () {
       return {
         title: t('otherPickTitle'),
-        html: bigProgress() + h1(t('otherPickTitle')) + '<div class="tiles tiles-3">' + OTHER_ICONS.map(function (o, i) {
+        html: h1(t('otherPickTitle')) + '<div class="tiles tiles-3">' + OTHER_ICONS.map(function (o, i) {
           return '<button type="button" class="tile tile-icon" data-act="pick" data-i="' + i + '" aria-label="' + esc(t(o.text)) + '">' +
             ic(o.icon, 'tile-ic') + '</button>';
         }).join('') + '</div>' + actions(backBtn()),
         speak: function () { return t('otherPickTitle'); },
-        back: bigStart,
+        back: function () { go('bigPick'); },
         actions: {
           pick: function (d) {
             ui.big.icon = OTHER_ICONS[Number(d.i)].icon;
@@ -820,7 +782,7 @@
       }
       return {
         title: t('otherNameTitle'),
-        html: bigProgress() + h1(t('otherNameTitle')) + '<p class="hint">' + esc(t('otherNameHint')) + '</p>' +
+        html: h1(t('otherNameTitle')) + '<p class="hint">' + esc(t('otherNameHint')) + '</p>' +
           '<div class="field-row">' + ic(ui.big.icon, 'field-ic') +
           '<div class="field-wrap"><label for="other-name" class="field-label">' + esc(t('otherNameLabel')) + '</label>' +
           '<input id="other-name" class="field" type="text" maxlength="30" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" value="' +
@@ -841,11 +803,11 @@
       var b = ui.big;
       if (!b) return SCREENS.home();
       return keypadScreen({
-        step: b.inSetup ? 4 : null, title: t('bigHowMuch'),
+        title: t(b.savings ? 'savingsHowMuch' : 'bigHowMuch'),
         afterTitle: chip(b.icon, b.name),
         speakExtra: [b.name],
         initial: b.amount ? L.amountToKeypad(b.amount) : '',
-        onBack: function () { if (b.other) go('bigOtherName'); else bigStart(); },
+        onBack: function () { go(b.other ? 'bigOtherName' : 'bigPick'); },
         onNext: function (v) { b.amount = v; go('bigSource'); }
       });
     },
@@ -855,15 +817,15 @@
       if (!b) return SCREENS.home();
       return {
         title: t('bigWhich'),
-        html: bigProgress() + h1(t('bigWhich')) + chip(b.icon, b.name + ' ' + fmt(b.amount)) +
+        html: h1(t('bigWhich')) + chip(b.icon, b.name + ' ' + fmt(b.amount)) +
           '<div class="choices">' + sourceChoice('bank') + sourceChoice('cuse') + '</div>' + actions(backBtn()),
         speak: function () { return speakJoin([t('bigWhich'), b.name + ', ' + fmt(b.amount)]); },
         back: function () { go('bigAmount'); },
         actions: {
           src: function (d) {
             b.source = d.src;
-            // Coming from a day screen, the day is already picked.
-            if (b.presetDate) finishBig(b.presetDate);
+            // Savings has no day. Coming from a day screen, the day is already picked.
+            if (b.savings || b.presetDate) finishBig(b.presetDate || null);
             else go('bigDate');
           }
         }
@@ -892,7 +854,7 @@
 
       return {
         title: t('bigDateTitle'),
-        html: (editing ? '' : bigProgress()) + h1(t('bigDateTitle'), I.calendar) +
+        html: h1(t('bigDateTitle'), I.calendar) +
           chip(b.icon, b.name + ' ' + fmt(b.amount)) +
           // "I don't know" comes first, so a screen reader user does not have to swipe past every day.
           actions(button('unknown', t('dontKnow'), I.next, { cls: 'btn-secondary' })) +
@@ -916,55 +878,53 @@
       };
     },
 
-    planShort: function () {
-      var shorts = L.planShortfalls(state);
-      var lines = shorts.map(function (s) {
-        return {
-          src: s.source,
-          text: t('planShortText', { source: srcLower(s.source) }),
-          nums: t('planShortNumbers', { need: fmt(s.need), have: fmt(s.have) })
-        };
-      });
+    // Right after adding a big thing, if big things now cost more than the money there is.
+    planShort: function (p) {
+      var b = findBig(p.id);
+      if (!b) return SCREENS.home();
+      var sum = L.sourceSummary(state, b.source);
+      var text = t('planShortText', { source: srcLower(b.source) });
+      var nums = t('planShortNumbers', { need: fmt(sum.protected), have: fmt(sum.current) });
+      var from = fromWhere(p.from);
       return {
         title: t('planShortTitle'),
-        html: progress(4) + '<div class="alert-card alert-yellow">' + ic(I.worried, 'alert-ic') + h1(t('planShortTitle')) +
-          lines.map(function (l) {
-            return '<p class="big-line">' + ic(srcIcon(l.src)) + '<span>' + esc(l.text) + '</span></p><p>' + esc(l.nums) + '</p>';
-          }).join('') + '</div>' +
+        html: '<div class="alert-card alert-yellow">' + ic(I.worried, 'alert-ic') + h1(t('planShortTitle')) +
+          '<p class="big-line">' + ic(srcIcon(b.source)) + '<span>' + esc(text) + '</span></p><p>' + esc(nums) + '</p></div>' +
           actions(button('change', t('changeIt'), I.pencil, { cls: 'btn-go' }) + button('keepGoing', t('keepGoing'), I.next, { cls: 'btn-neutral' })),
-        speak: function () {
-          return speakJoin([t('planShortTitle')].concat(lines.reduce(function (a, l) { return a.concat([l.text, l.nums]); }, [])));
-        },
-        back: function () { go('setupBig'); },
+        speak: function () { return speakJoin([t('planShortTitle'), text, nums]); },
+        back: function () { goTo(from); },
         actions: {
-          change: function () { go('setupBig'); },
-          keepGoing: function () { go('summary'); }
+          change: function () { go('bigEdit', { id: b.id, from: p.from }); },
+          keepGoing: function () { goTo(from); }
         }
       };
     },
 
     summary: function () {
-      var html = progress(5) + h1(t('summaryTitle'), I.check);
+      var html = progress(3) + h1(t('summaryTitle'), I.check);
       var spoken = [t('summaryTitle')];
       SOURCES.forEach(function (src) {
         var s = L.sourceSummary(state, src);
         html += '<section class="card src-card src-' + src + '" aria-labelledby="sum-' + src + '">' +
           '<h2 id="sum-' + src + '" class="src-title">' + ic(srcIcon(src)) + '<span>' + esc(srcName(src)) + '</span></h2>' +
           row(I.moneyBag, t('rowHave'), fmt(s.current)) +
-          row(I.pig, t('rowSave'), fmt(s.protected), t('rowSaveSub')) +
+          (s.protected > 0 ? row(I.calendar, t('rowBig'), fmt(s.protected), t('rowBigSub')) : '') +
           row(I.smile, t('rowFree'), show(s.free), null, true) + '</section>';
-        spoken.push(srcName(src), t('rowHave') + ' ' + fmt(s.current), t('rowSave') + ' ' + fmt(s.protected), t('rowFree') + ' ' + show(s.free));
+        spoken.push(srcName(src), t('rowHave') + ' ' + fmt(s.current));
+        if (s.protected > 0) spoken.push(t('rowBig') + ' ' + fmt(s.protected));
+        spoken.push(t('rowFree') + ' ' + show(s.free));
       });
+      html += '<p class="big-line">' + ic(I.plus) + '<span>' + esc(t('summaryBigHint')) + '</span></p>';
+      spoken.push(t('summaryBigHint'));
       html += actions(button('finish', t('goToMoney'), I.home));
       return {
         title: t('summaryTitle'),
         html: html,
         speak: function () { return speakJoin(spoken); },
-        back: function () { go('setupBig'); },
+        back: function () { go('setupCuse'); },
         actions: {
           finish: function () {
             state.setupComplete = true;
-            state.suggestions = [];
             save();
             go('home');
           }
@@ -1008,13 +968,12 @@
           '<h2 id="h-' + src + '" class="src-title">' + ic(srcIcon(src)) + '<span>' + esc(srcName(src)) + '</span></h2>' +
           '<p class="free-label">' + esc(t('freeToSpend')) + '</p>' +
           '<p class="free-amount">' + show(s.free) + '</p>' +
-          (s.free < 0 ? '<p class="used-save">' + esc(t('usedSave', { amount: fmt(-s.free) })) + '</p>' : '') +
+          (s.free < 0 ? '<p class="short-by">' + esc(t('shortBy', { amount: fmt(-s.free) })) + '</p>' : '') +
           '<p class="have">' + esc(t('youHaveShort', { amount: fmt(s.current) })) + '</p>' +
           '<p class="status status-' + st + '"><span class="dot" aria-hidden="true"></span>' + ic(info[0]) +
           '<span>' + esc(t(info[1])) + '</span></p>' +
           '<div class="src-actions">' +
           button('fix', t('fixMoney'), I.pencil, { cls: 'btn-small btn-secondary', data: { src: src }, aria: t('fixMoneyLabel', { source: srcName(src) }) }) +
-          button('goal', t('changeGoal'), I.pig, { cls: 'btn-small btn-secondary', data: { src: src }, aria: t('changeGoalLabel', { source: srcName(src) }) }) +
           '</div></section>';
       }).join('');
 
@@ -1025,14 +984,13 @@
           return a < c ? -1 : a > c ? 1 : x.i - y.i;
         }).map(function (o) { return o.b; });
       var big = unpaid.concat(state.bigSpends.filter(function (b) { return b.paid; }));
-      var bigHTML = '';
-      if (big.length) {
-        bigHTML = '<section class="big-section" aria-labelledby="h-big"><h2 id="h-big">' + esc(t('bigToPay')) + '</h2><ul class="cards">' +
-          big.map(function (b) { return bigCard(b, 'home'); }).join('') + '</ul></section>';
-        if (unpaid.length) {
-          spoken.push(t('bigToPay'));
-          unpaid.forEach(function (b) { spoken.push(b.name + ', ' + fmt(b.amount)); });
-        }
+      var bigHTML = '<section class="big-section" aria-labelledby="h-big"><h2 id="h-big">' + esc(t('bigToPay')) + '</h2>' +
+        (big.length ? '<ul class="cards">' + big.map(function (b) { return bigCard(b, 'home'); }).join('') + '</ul>'
+          : '<p class="big-line">' + esc(t('bigNone')) + '</p>') +
+        actions(button('addBig', t('addBig'), I.plus, { cls: 'btn-secondary' })) + '</section>';
+      if (unpaid.length) {
+        spoken.push(t('bigToPay'));
+        unpaid.forEach(function (b) { spoken.push(b.name + ', ' + fmt(b.amount)); });
       }
 
       var html = (storageOK ? '' : '<p class="msg msg-error">' + ic(I.warn) + '<span>' + esc(t('noSaveWarning')) + '</span></p>') +
@@ -1053,11 +1011,11 @@
         actions: {
           buy: function () { ui.buy = {}; go('buyAmount'); },
           calendar: function () { go('calendar'); },
+          addBig: function () { ui.big = { from: 'home' }; go('bigPick'); },
           got: function () { ui.got = {}; go('gotAmount'); },
           list: function () { go('list'); },
           settings: function () { go('settings'); },
           fix: function (d) { go('fixMoney', { src: d.src }); },
-          goal: function (d) { go('goalEdit', { src: d.src }); },
           paid: function (d) { go('paidConfirm', { id: d.id, from: d.from }); },
           editBig: function (d) { go('bigEdit', { id: d.id, from: d.from }); },
           // The banner already asks "Did you pay it?", so Yes counts as the answer.
@@ -1106,7 +1064,7 @@
     // ----- My calendar -----
     calendar: function () {
       var view = calView();
-      var undated = state.bigSpends.filter(function (b) { return !b.date; });
+      var undated = state.bigSpends.filter(function (b) { return !b.date && !b.savings; });
       var spoken = [t('calTitle'), L.formatMonthYear(state.month)];
       state.bigSpends.filter(function (b) { return b.date; }).slice().sort(function (a, b) {
         return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
@@ -1158,7 +1116,7 @@
         back: function () { go('calendar'); },
         actions: {
           add: function () {
-            ui.big = { presetDate: key, returnTo: { name: 'day', params: { key: key } } };
+            ui.big = { presetDate: key, from: from };
             go('bigPick');
           },
           paid: function (d) { go('paidConfirm', { id: d.id, from: from }); },
@@ -1182,13 +1140,13 @@
         html: h1(t('bigEditTitle'), I.pencil) + '<div class="card item-card item-card-big' + (b.paid ? ' is-paid' : '') + '">' + itemBody(b) +
           (b.paid ? '<p class="paid-tag">' + ic(I.check) + '<span>' + esc(t('paidDone')) + '</span></p>' : '') + '</div>' +
           actions(button('amount', t('changeAmount'), I.pencil, { cls: 'btn-secondary' }) +
-            button('day', t('changeDay'), I.calendar, { cls: 'btn-secondary' }) +
+            (b.savings ? '' : button('day', t('changeDay'), I.calendar, { cls: 'btn-secondary' })) +
             (b.paid ? button('unpay', t('notPaidYet'), I.undo, { cls: 'btn-secondary' }) : '') +
             button('remove', t('bigRemove'), I.remove, { cls: 'btn-secondary' }) +
             backBtn()),
         speak: function () {
-          return speakJoin([t('bigEditTitle'), bigSpoken(b), b.date ? L.formatLongDate(b.date) : null,
-            t('changeAmount'), t('changeDay')].concat(b.paid ? [t('notPaidYet')] : []).concat([t('bigRemove')]));
+          return speakJoin([t('bigEditTitle'), bigSpoken(b), b.date ? L.formatLongDate(b.date) : null, t('changeAmount')]
+            .concat(b.savings ? [] : [t('changeDay')]).concat(b.paid ? [t('notPaidYet')] : []).concat([t('bigRemove')]));
         },
         back: function () { goTo(fromWhere(from)); },
         actions: {
@@ -1208,7 +1166,7 @@
       var b = findBig(p.id);
       if (!b) return SCREENS.home();
       return keypadScreen({
-        title: t('bigHowMuch'),
+        title: t(b.savings ? 'savingsHowMuch' : 'bigHowMuch'),
         afterTitle: chip(b.icon, b.name),
         speakExtra: [b.name],
         initial: L.amountToKeypad(b.amount),
@@ -1270,23 +1228,6 @@
           save();
           go('done', { kind: 'fixed', src: src });
           offerUndo({ type: 'adjustment', source: src, id: id }, t('undoFixed', { source: srcLower(src) }));
-        }
-      });
-    },
-
-    goalEdit: function (p) {
-      var src = p.src;
-      return saveGoalScreen(src, src === 'bank' ? 'saveBankTitle' : 'saveCuseTitle', {
-        initial: L.amountToKeypad(state.sources[src].saveGoal) || '0',
-        nextLabel: t('save'), nextIcon: I.check,
-        onBack: function () { go('home'); },
-        onNext: function (v) {
-          if (v === state.sources[src].saveGoal) { go('home'); announce(t('fixSame'), false); return; }
-          var u = L.saveGoalUndo(state, src);
-          state = L.setSaveGoal(state, src, v);
-          save();
-          go('done', { kind: 'goal', src: src });
-          offerUndo(u, t('undoGoal'));
         }
       });
     },
@@ -1372,13 +1313,12 @@
 
       var loseHTML = '';
       var loseNames = lose.map(function (r) {
-        if (r.kind === 'save') return t('loseSave');
         return r.date ? t('loseOnDay', { name: r.name, date: L.formatMonthDay(r.date) }) : r.name;
       });
       if (lose.length) {
         loseHTML = '<p class="lose-heading">' + esc(t('loseHeading')) + '</p><ul class="lose-list">' +
           lose.map(function (r, i) {
-            return '<li>' + ic(r.kind === 'save' ? I.pig : r.icon) + '<span>' + esc(loseNames[i]) + '</span></li>';
+            return '<li>' + ic(r.icon) + '<span>' + esc(loseNames[i]) + '</span></li>';
           }).join('') + '</ul>';
       }
 
@@ -1418,9 +1358,8 @@
       var c = ui.buy.check;
       var first = c.atRisk[0];
       var text, icon;
-      if (c.reason === 'notEnough') { text = t('sureNotEnough'); icon = I.warn; }
-      else if (first && first.kind === 'bigSpend') { text = t('sureBig', { thing: first.name }); icon = first.icon; }
-      else { text = t('sureSave'); icon = I.pig; }
+      if (c.reason !== 'notEnough' && first) { text = t('sureBig', { thing: first.name }); icon = first.icon; }
+      else { text = t('sureNotEnough'); icon = I.warn; }
       function spokenText() { return speakJoin([t('sureTitle'), text]); }
       return {
         title: t('sureTitle'),
@@ -1462,9 +1401,6 @@
       } else if (p.kind === 'fixed') {
         icon = I.check; title = t('fixedTitle');
         lines = [t('gotNow', { amount: fmt(L.currentMoney(state, src)) }), freeLine];
-      } else if (p.kind === 'goal') {
-        icon = I.pig; title = t('goalDoneTitle');
-        lines = [t('goalDoneText', { amount: fmt(state.sources[src].saveGoal) }), freeLine];
       } else {
         icon = I.party; title = t('gotDoneTitle'); celebrate = true;
         lines = [t('gotDoneText'), t('gotNow', { amount: fmt(L.currentMoney(state, src)) })];
@@ -1606,30 +1542,6 @@
     }
   };
 
-  /**
-   * Save goal keypad. Used in setup (step 3) and for "🐷 Change my save goal",
-   * with the same check: no more than the money you have.
-   * In setup, call it as (src, titleKey, backTo, nextTo).
-   * Later, call it as (src, titleKey, { initial, nextLabel, nextIcon, onBack, onNext }).
-   */
-  function saveGoalScreen(src, titleKey, backTo, nextTo) {
-    var have = L.currentMoney(state, src);
-    var seenKey = src + 'Save';
-    var later = typeof backTo === 'object';
-    return keypadScreen({
-      step: later ? null : 3, title: t(titleKey), icon: I.pig, allowZero: true,
-      afterTitle: '<div class="hint-box">' + ic(I.pig) + '<div><p>' + esc(t('saveHint')) + '</p><p>' + esc(t('saveHint2')) + '</p></div></div>' +
-        '<p class="have-line">' + ic(srcIcon(src)) + '<span>' + esc(t('youHave', { amount: fmt(have) })) + '</span></p>',
-      speakExtra: [t('saveHint'), t('saveHint2'), t('youHave', { amount: fmt(have) })],
-      initial: later ? backTo.initial : initialFor(seenKey, state.sources[src].saveGoal),
-      nextLabel: later ? backTo.nextLabel : null,
-      nextIcon: later ? backTo.nextIcon : null,
-      validate: function (v) { return L.saveGoalOk(v, have) ? null : t('saveTooMuch'); },
-      onBack: later ? backTo.onBack : function () { go(backTo); },
-      onNext: later ? backTo.onNext : function (v) { state.sources[src].saveGoal = v; ui.seen[seenKey] = true; save(); go(nextTo); }
-    });
-  }
-
   /** Saves the purchase on screen. Returns its id. */
   function recordChoice(choice) {
     var b = ui.buy;
@@ -1655,7 +1567,7 @@
     offerUndo({ type: 'purchase', id: id }, t('undoBought', { thing: t(catInfo(b.category).text), amount: fmt(b.amount) }));
   }
 
-  // ----- adding a big spend (setup, or from a day screen) -----
+  // ----- adding a big spend -----
 
   function tilesHTML() {
     return '<div class="tiles">' + TILES.map(function (tile) {
@@ -1664,35 +1576,27 @@
     }).join('') + '</div>';
   }
 
-  /** ctx: { inSetup } or { presetDate, returnTo } */
+  /** ctx: { presetDate, from } */
   function pickTile(key, ctx) {
     var tile = TILES.filter(function (x) { return x.key === key; })[0];
     if (!tile) return;
     if (tile.key === 'other') { ui.big = Object.assign({ other: true, icon: null, name: '' }, ctx); go('bigOtherIcon'); }
-    else { ui.big = Object.assign({ name: t(tile.text), icon: tile.icon }, ctx); go('bigAmount'); }
-  }
-
-  /** Back to the pictures. */
-  function bigStart() {
-    if (ui.big && !ui.big.inSetup) go('bigPick');
-    else go('setupBig');
-  }
-
-  function bigProgress() {
-    return ui.big && ui.big.inSetup ? progress(4) : '';
+    else { ui.big = Object.assign({ name: t(tile.text), icon: tile.icon, savings: tile.key === 'savings' }, ctx); go('bigAmount'); }
   }
 
   /** Last step of adding a big spend. date is a day key or null ("I don't know"). */
   function finishBig(date) {
     var b = ui.big;
-    var id = L.makeId();
+    var pot = b.savings ? L.savingsFor(state, b.source) : null;
+    var id = pot ? pot.id : L.makeId();
     var u = L.bigSpendUndo(state, id);
-    state = L.addBigSpend(state, { id: id, name: b.name, icon: b.icon, amount: b.amount, source: b.source, date: date });
+    var item = { id: id, name: b.name, icon: b.icon, amount: b.amount, source: b.source, date: date };
+    state = b.savings ? L.addSavings(state, item) : L.addBigSpend(state, item);
     ui.big = null;
     save();
-    if (b.inSetup) { go('setupBig', { focus: '#yours' }); return; }
-    goTo(b.returnTo);
-    offerUndo(u, t('undoAdded', { thing: b.name }));
+    if (L.freeMoney(state, b.source) < 0) go('planShort', { id: id, from: b.from });
+    else goTo(fromWhere(b.from));
+    offerUndo(u, b.savings ? t('undoSaved', { amount: fmt(b.amount) }) : t('undoAdded', { thing: b.name }));
   }
 
   /** A reminder banner on Home with "✅ Yes" and "Not yet". */

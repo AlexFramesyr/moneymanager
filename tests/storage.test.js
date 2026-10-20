@@ -40,6 +40,7 @@ test('storage: v1 data is upgraded and saved under the new key', () => {
   assert.equal(L.currentMoney(s, 'bank'), 213);
   assert.equal(s.bigSpends[0].date, null);
   assert.deepEqual(s.sources.bank.adjustments, []);
+  assert.equal('saveGoal' in s.sources.bank, false); // old save goals are dropped
   assert.equal(JSON.parse(data['moneyBuddy.v2']).version, 2);
 });
 

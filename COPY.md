@@ -7,7 +7,7 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 - **Words** = words in the longest sentence. ⚠️ marks sentences over 6 words, so you can check reading level.
 - Pictures (emojis) are listed at the bottom.
 
-**8 lines** have a sentence longer than 6 words.
+**7 lines** have a sentence longer than 6 words.
 
 ## Everywhere
 
@@ -58,26 +58,29 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `start` | Start | 1 |
 | `bankTitle` | How much money is in your bank? | 7 ⚠️ |
 | `cuseTitle` | How much 'Cuse Cash do you have? | 7 ⚠️ |
-| `saveBankTitle` | How much bank money to save? | 6 |
-| `saveCuseTitle` | How much 'Cuse Cash to save? | 6 |
-| `saveHint` | This is money you save. | 5 |
-| `saveHint2` | Do not spend it. | 4 |
-| `youHave` | You have {amount}. | 3 |
-| `saveTooMuch` | That is more than you have. Try a smaller number. | 6 |
-| `bigTitle` | What big things will you buy this month? | 8 ⚠️ |
+| `summaryTitle` | Your plan is ready! | 4 |
+| `rowHave` | You have | 2 |
+| `rowBig` | Big things | 2 |
+| `rowBigSub` | Kept for your big things. | 5 |
+| `rowFree` | Free to spend | 3 |
+| `summaryBigHint` | You can add big things later. | 6 |
+| `goToMoney` | Go to my money | 4 |
+
+## Add a big thing
+
+| Key | Text | Words |
+|---|---|---|
+| `bigPickTitle` | What will you buy? | 4 |
 | `bigLastMonth` | Last month you had: | 4 |
 | `bigKeep` | Keep | 1 |
 | `bigKeepLabel` | Keep {name}, {amount} | 3 |
-| `bigYours` | Your big things: | 3 |
-| `bigAdd` | Tap a picture to add one. | 6 |
+| `bigNew` | Or tap a picture: | 4 |
 | `bigRemove` | Remove | 1 |
-| `bigRemoveLabel` | Remove {name}, {amount} | 3 |
-| `bigDone` | I'm done | 2 |
 | `bigHowMuch` | How much is it? | 4 |
+| `savingsHowMuch` | How much to save? | 4 |
 | `bigWhich` | Bank or 'Cuse Cash? | 4 |
 | `bigDateTitle` | When will you buy it? | 5 |
 | `dontKnow` | I don't know | 3 |
-| `bigPickTitle` | What will you buy? | 4 |
 | `otherPickTitle` | Pick a picture. | 3 |
 | `otherNameTitle` | What is it called? | 4 |
 | `otherNameHint` | You can skip this. | 4 |
@@ -87,17 +90,12 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `planShortNumbers` | You need {need}. You have {have}. | 3 |
 | `changeIt` | Change it | 2 |
 | `keepGoing` | Keep going | 2 |
-| `summaryTitle` | Your plan is ready! | 4 |
-| `rowHave` | You have | 2 |
-| `rowSave` | Save | 1 |
-| `rowSaveSub` | For your goal and big things. | 6 |
-| `rowFree` | Free to spend | 3 |
-| `goToMoney` | Go to my money | 4 |
 
 ## Big things (pictures to tap)
 
 | Key | Text | Words |
 |---|---|---|
+| `tileSavings` | Savings | 1 |
 | `tileConcert` | Concert | 1 |
 | `tileLaundry` | Laundry | 1 |
 | `tileGift` | Birthday gift | 2 |
@@ -128,11 +126,13 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `daysLeftOne` | Last day of the month | 5 |
 | `freeToSpend` | Free to spend | 3 |
 | `youHaveShort` | You have {amount} | 3 |
-| `usedSave` | You used {amount} of save money. | 6 |
+| `shortBy` | Big things need {amount} more. | 5 |
 | `statusGreen` | Doing great | 2 |
 | `statusYellow` | Be careful | 2 |
 | `statusRed` | Low | 1 |
-| `bigToPay` | Big things to pay | 4 |
+| `bigToPay` | My big things | 3 |
+| `bigNone` | No big things yet. | 4 |
+| `addBig` | Add a big thing | 4 |
 | `paidIt` | I paid it | 3 |
 | `paidItLabel` | I paid it: {name}, {amount} | 5 |
 | `paidDone` | Paid | 1 |
@@ -143,8 +143,6 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `myCalendar` | My calendar | 2 |
 | `fixMoney` | Fix my money | 3 |
 | `fixMoneyLabel` | Fix my money: {source} | 4 |
-| `changeGoal` | Change my save goal | 4 |
-| `changeGoalLabel` | Change my save goal: {source} | 5 |
 
 ## Reminders (top of Home)
 
@@ -197,8 +195,6 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `fixAppSays` | The app says {amount}. | 4 |
 | `fixSame` | Okay. Nothing changed. | 2 |
 | `fixedTitle` | All fixed! | 2 |
-| `goalDoneTitle` | Saved! | 1 |
-| `goalDoneText` | You will save {amount}. | 4 |
 
 ## Undo
 
@@ -211,10 +207,10 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `undoGot` | You got {amount}. | 3 |
 | `undoPaid` | You paid {thing}. | 3 |
 | `undoFixed` | You fixed your {source}. | 4 |
-| `undoGoal` | You changed your save goal. | 5 |
 | `undoRemoved` | You removed {thing}. | 3 |
 | `undoChanged` | You changed {thing}. | 3 |
 | `undoAdded` | You added {thing}. | 3 |
+| `undoSaved` | You saved {amount}. | 3 |
 | `undoNotPaid` | {thing} is not paid. | 4 |
 
 ## I paid it
@@ -255,7 +251,6 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `stopTitle` | Stop! | 1 |
 | `stopText` | This money is for your plans. | 6 |
 | `loseHeading` | You will not have enough for: | 6 |
-| `loseSave` | Your savings | 2 |
 | `loseOnDay` | {name} on {date} | 3 |
 | `notEnoughTitle` | Not enough money | 3 |
 | `notEnoughText` | You only have {amount}. | 4 |
@@ -264,7 +259,6 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `buyAnyway` | Buy it anyway | 3 |
 | `sureTitle` | Are you sure? | 3 |
 | `sureBig` | Your {thing} money will go down. | 6 |
-| `sureSave` | Your save money will go down. | 6 |
 | `sureNotEnough` | Your money will go below zero. | 6 |
 | `noWait` | No, wait | 2 |
 | `yesBuy` | Yes, buy it | 3 |
@@ -277,7 +271,7 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | `greenText` | You bought {thing} for {amount}. | 5 |
 | `freeLeft` | You have {amount} free to spend. | 6 |
 | `waitedTitle` | Great choice! | 2 |
-| `waitedText` | You saved {amount}. | 3 |
+| `waitedText` | You didn't spend {amount}. | 4 |
 | `boughtTitle` | Okay. We wrote it down. | 4 |
 
 ## I got money
@@ -330,11 +324,11 @@ This file is made from `copy.js`. **To change wording, edit `copy.js`** (the wor
 | Key | Text | Words |
 |---|---|---|
 | `newMonthTitle` | New month! | 2 |
-| `recapSaved` | Last month you saved {amount}. | 5 |
-| `recapWaitedMany` | You waited {n} times. | 4 |
-| `recapWaitedOne` | You waited 1 time. | 4 |
+| `recapSaved` | You saved {amount}! | 3 |
 | `recapFresh` | New month. New start! | 2 |
-| `makePlan` | Make a new plan | 4 |
+| `newMonthGot` | Did you get money? | 4 |
+| `newMonthYes` | Yes, I got money | 4 |
+| `newMonthNo` | No new money | 3 |
 
 ## How words are said out loud
 

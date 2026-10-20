@@ -1,7 +1,7 @@
 # Money Buddy 🪙
 
 Money Buddy is a simple money app for students in Syracuse University's InclusiveU program.
-It helps a student **stop and think before they buy something**, so they still have money for their big plans and their savings goal.
+It helps a student **stop and think before they buy something**, so they still have money for their big plans.
 
 - It uses **big text, pictures, and short words**.
 - It can **read the screen out loud** (🔊 Read to me).
@@ -13,13 +13,14 @@ It helps a student **stop and think before they buy something**, so they still h
 
 ## What the student does
 
-1. **Make a plan (once a month).** The student enters how much money they have in their bank and on their 'Cuse Cash card, how much they want to save, and the big things they need to pay for this month (like a concert or laundry).
-2. **Before buying something,** they tap **🛒 I want to buy something**, type the price, and pick a picture.
-3. **The app checks the price.**
+1. **Make a plan (only once).** The student enters how much money they have in their bank and on their 'Cuse Cash card. That's it: 3 short steps. After that, the money carries over from month to month.
+2. **Add big things any time.** On Home, the student taps **➕ Add a big thing** for things they need to pay for this month (like a concert or laundry). The app keeps that money set aside. **🐷 Savings** is one of the pictures: money put in savings stays set aside every month and grows each time the student adds to it. If the big things cost more than they have, the app says **"Uh oh."** right away.
+3. **Before buying something,** they tap **🛒 I want to buy something**, type the price, and pick a picture.
+4. **The app checks the price.**
    - ✅ **Fine:** it is saved, and the student sees a happy message.
    - ⚠️ **Yellow "Think first"** or **orange "Be careful":** the price is a big part of their spending money.
-   - 🛑 **Red "Stop!":** the purchase would use money set aside for a big thing or for savings. The app names what they would lose (for example, "🎟️ Concert").
-4. The student taps **✋ I will wait** (and gets a 🌟) or **Buy it anyway**. Both choices are okay.
+   - 🛑 **Red "Stop!":** the purchase would use money set aside for a big thing. The app names what they would lose (for example, "🎟️ Concert").
+5. The student taps **✋ I will wait** (and gets a 🌟 and "You didn't spend $X") or **Buy it anyway**. Both choices are okay.
 
 The warnings get stricter as the month goes on, because there is less time left to make the money last.
 
@@ -30,7 +31,7 @@ The warnings get stricter as the month goes on, because there is less time left 
 
 ### Fixing mistakes ✏️
 - **↩️ Oops! Undo:** after buying something, "I got money", "I paid it", or fixing money, a big Undo bar shows at the bottom. It stays while the student is on that screen, and for 10 seconds after they move on.
-- **✏️ Fix my money** (on each money card): type how much is *really* in the bank or on the 'Cuse Cash card. The app saves the difference, so the list still shows what happened. **🐷 Change my save goal** is right next to it.
+- **✏️ Fix my money** (on each money card): type how much is *really* in the bank or on the 'Cuse Cash card. The app saves the difference, so the list still shows what happened.
 - **❌ Remove** on every line in **What I bought** (it asks first).
 - **Tap a big thing** on Home to change its amount or day, remove it, or say **Not paid yet** if it was marked paid by mistake.
 
@@ -101,7 +102,7 @@ Students should do this **before** making their plan. *(On iPhone, the Home Scre
 | **Can it move to a new phone?** | No. On a new phone, the student makes a new plan. |
 | **What erases the data?** | Deleting the app from the Home Screen, or clearing the browser's website data. |
 | **Does it need internet?** | Only the first time. After that, it works offline. |
-| **What happens on the 1st of the month?** | The app shows a short recap ("Last month you saved $X 🐷"), then starts a new plan. Last month's big things show up as ideas the student can tap to keep. |
+| **What happens on the 1st of the month?** | The first time the app opens, it celebrates ("🎉 You saved $X!" – the money left at the end of last month) and asks **"Did you get money?"**. The money left over and 🐷 Savings carry into the new month. Other big things start fresh: they show up under **➕ Add a big thing** as ideas the student can tap to keep. "What I bought" starts empty. |
 | **The 🔊 button is missing.** | That phone or browser can't read out loud. Everything else still works. |
 | **It reads alerts out loud by itself.** | That helps students who don't read well. To turn it off, go to **⚙️ Settings**. Students who use VoiceOver or TalkBack should turn it off, so two voices don't talk at once. |
 
@@ -129,9 +130,9 @@ Phones keep a saved copy of the app so it works offline. To make phones get your
 1. Open **`sw.js`** on GitHub and click ✏️.
 2. Find this line near the top:
    ```js
-   var CACHE = 'money-buddy-v2';
+   var CACHE = 'money-buddy-v3';
    ```
-   Change the number: `v2` → `v3` (next time, `v4`, and so on).
+   Change the number: `v3` → `v4` (next time, `v5`, and so on).
 3. Click **Commit changes**.
 
 Students will get the new version the **second** time they open the app (the first open downloads it quietly).
@@ -148,10 +149,13 @@ Students will get the new version the **second** time they open the app (the fir
 - **Run locally:** `python -m http.server 8000` in this folder, then open `http://localhost:8000`. (Opening `index.html` directly works too, but offline mode needs a web server.)
 - **Icons:** `node tools/make-icons.js` redraws the PNG and SVG icons.
 - If saved data is unreadable, the app starts a fresh plan and keeps a copy of the bad data under `moneyBuddy.v2.broken`.
+- **No savings goal:** older versions asked for a save goal. `sanitizeState()` now drops any old `saveGoal`, so that money simply counts as free money. The data version did not change.
+- **Savings:** a big spend with `savings: true` – one per source, never dated or paid. `MBLogic.addSavings()` grows it. Big spends saved before this have no `savings` field and load as `false`.
+- **New month:** once `setupComplete` is true, `MBLogic.startMonth()` archives the old month, starts each source at the money left over (never below $0), keeps savings pots, and turns the other big spends into suggestions.
 
 ### The alert rules
 
-For each money source: **free money** = money you have − save goal − big things not yet paid.
+For each money source: **free money** = money you have − big things not yet paid.
 
 | Day of month | Threshold |
 |---|---|
@@ -163,7 +167,7 @@ For each money source: **free money** = money you have − save goal − big thi
 | Alert | When |
 |---|---|
 | 🛑 Not enough money | price > all the money in that source |
-| 🛑 Stop! | price > free money (it would use big-thing or save money) |
+| 🛑 Stop! | price > free money (it would use big-thing money) |
 | ⚠️ Be careful (orange) | price > 2 × threshold × free money |
 | ⚠️ Think first (yellow) | price > threshold × free money |
 | ✅ Fine | everything else |
