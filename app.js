@@ -280,29 +280,25 @@
   }
 
   // ---------- "Oops! Undo" ----------
-  // The bar shows for 5 seconds, then goes away. While the app's voice is
-  // reading, or a finger is on the bar, it waits; the 5 seconds start again
-  // after. (VoiceOver and TalkBack don't tell web pages when they finish, so
-  // only the app's own voice can be waited for.)
+  // The bar shows for 5 seconds each time it pops up, then goes away.
   // "❌ Remove" in "What I bought" is always there as a backup.
 
   var undoTimer = null;
 
   /** u: an undo note from logic.js. what: words saying what will be undone. */
   function offerUndo(u, what, said) {
-    ui.undo = { u: u, touched: false };
+    ui.undo = { u: u };
     undoWhat.textContent = what;
     undoBar.hidden = false;
     document.body.classList.add('has-undo');
-    restartUndoTimer();
+    startUndoTimer();
     announce(speakJoin([said, what, t('undoReady')]), false);
   }
 
-  /** Starts the 5 seconds again, or holds the bar while reading or touched. */
-  function restartUndoTimer() {
+  /** Starts the 5 seconds from the beginning. */
+  function startUndoTimer() {
     clearTimeout(undoTimer);
     undoBar.classList.remove('is-ticking');
-    if (!ui.undo || reading || ui.undo.touched) return;
     void undoBar.offsetWidth; // restart the shrinking line
     undoBar.classList.add('is-ticking');
     undoTimer = setTimeout(hideUndo, UNDO_MS);
@@ -332,20 +328,6 @@
     else go('home');
     announce(t('undoDone'), false);
   });
-
-  undoBar.addEventListener('pointerdown', function () {
-    if (!ui.undo) return;
-    ui.undo.touched = true;
-    restartUndoTimer();
-  });
-  // The finger can lift anywhere, so listen on the whole page.
-  function undoLetGo() {
-    if (!ui.undo || !ui.undo.touched) return;
-    ui.undo.touched = false;
-    restartUndoTimer();
-  }
-  document.addEventListener('pointerup', undoLetGo, true);
-  document.addEventListener('pointercancel', undoLetGo, true);
 
   function updateGuard() {
     try {
@@ -379,7 +361,6 @@
     reading = on;
     readBtn.querySelector('.ic').textContent = on ? I.stop : I.read;
     readBtn.querySelector('.read-label').textContent = on ? t('stopReading') : t('readToMe');
-    if (ui.undo) restartUndoTimer();
   }
 
   function readScreen() {
